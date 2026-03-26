@@ -1,0 +1,5 @@
+transformers==4.57.6
+huggingface-hub==0.36.2
+tokenizers==0.22.2
+qwen-vl-utils==0.0.14
+decord==0.6.0
