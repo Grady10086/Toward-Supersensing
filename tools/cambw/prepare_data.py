@@ -30,7 +30,7 @@ def resolve_video_path(video: Dict[str, Any], data_root: str) -> Optional[str]:
                 "/path/to/data",
             ]:
                 if video_path.startswith(old_prefix):
-                    video_path = os.path.join(data_root, video_path[len(old_prefix):].lstrip("/"))
+                    video_path = os.path.join(data_root, video_path[len(old_prefix) :].lstrip("/"))
                     break
         else:
             video_path = os.path.join(data_root, video_path)

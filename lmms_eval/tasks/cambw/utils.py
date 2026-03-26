@@ -148,10 +148,7 @@ def _build_frame_recall_intro(video_path: str, frame_indices: Tuple[int, ...]) -
     context_count = min(FRAME_RECALL_CONTEXT_FRAMES, total_frames) if total_frames > 0 else FRAME_RECALL_CONTEXT_FRAMES
     question_count = len(frame_indices)
     frame_labels = _format_frame_label_list(question_count)
-    return (
-        f"The first {context_count} images are uniformly sampled from the video; "
-        f"the next {question_count} are {frame_labels} (in order).\n\n"
-    )
+    return f"The first {context_count} images are uniformly sampled from the video; " f"the next {question_count} are {frame_labels} (in order).\n\n"
 
 
 def _build_frame_recall_visuals(video_path: str, frame_indices: Tuple[int, ...]) -> List[Any]:
@@ -223,6 +220,7 @@ def extract_letter(text: str) -> str:
 # =============================================================================
 # lmms-eval Standard Interface Functions
 # =============================================================================
+
 
 def doc_to_text(doc: Dict[str, Any]) -> str:
     """
@@ -329,6 +327,7 @@ def process_results(doc: Dict[str, Any], results: List[str]) -> Dict[str, Any]:
 # lmms-eval Aggregation Functions
 # =============================================================================
 
+
 def aggregate_accuracy(results: List[Dict[str, Any]]) -> float:
     """
     Aggregate accuracy metric across all samples.
@@ -370,6 +369,7 @@ def aggregate_mra(results: List[Dict[str, Any]]) -> float:
 # =============================================================================
 # Legacy/Additional Aggregation Functions
 # =============================================================================
+
 
 def aggregate_results(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
