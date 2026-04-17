@@ -21,7 +21,12 @@ from lmms_eval import utils
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
-from lmms_eval.api.visual_payload import KIND_IMAGE_SEQUENCE, KIND_LEGACY_ITEMS, KIND_VIDEO_PATH, normalize_visual_payloads
+from lmms_eval.api.visual_payload import (
+    KIND_IMAGE_SEQUENCE,
+    KIND_LEGACY_ITEMS,
+    KIND_VIDEO_PATH,
+    normalize_visual_payloads,
+)
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
@@ -266,9 +271,7 @@ class MovieChat(lmms):
                 if video_path is not None:
                     raise NotImplementedError("MovieChat only supports one video payload per request.")
                 if metadata.get("sampling") or metadata.get("fps") or metadata.get("max_num_frames") is not None:
-                    raise NotImplementedError(
-                        "MovieChat does not honor lmms-eval video sampling payloads; strict Cambrian-W protocol runs are unsupported."
-                    )
+                    raise NotImplementedError("MovieChat does not honor lmms-eval video sampling payloads; strict Cambrian-W protocol runs are unsupported.")
                 video_path = payload.get("video_path")
             elif kind == KIND_IMAGE_SEQUENCE:
                 extra_images.extend(payload.get("images") or [])
@@ -286,9 +289,7 @@ class MovieChat(lmms):
                 raise NotImplementedError(f"Unsupported MovieChat visual payload kind: {kind}")
 
         if extra_images:
-            raise NotImplementedError(
-                f"MovieChat does not support extra question images required by task '{task}'."
-            )
+            raise NotImplementedError(f"MovieChat does not support extra question images required by task '{task}'.")
         if not video_path:
             raise NotImplementedError(f"MovieChat received no usable video input for task '{task}'.")
         return video_path

@@ -10,7 +10,11 @@ from typing import Any, Dict, List, Tuple
 import av
 import numpy as np
 from PIL import Image
-from lmms_eval.api.visual_payload import make_image_sequence_payload, make_video_path_payload
+
+from lmms_eval.api.visual_payload import (
+    make_image_sequence_payload,
+    make_video_path_payload,
+)
 from lmms_eval.tasks.cambw.identity import compute_doc_uid, compute_eval_uid
 
 try:

@@ -64,4 +64,3 @@ def compute_eval_uid(doc: Dict[str, Any]) -> str:
 
 def compute_doc_uid(doc: Dict[str, Any]) -> str:
     return _stable_hash(build_doc_identity_payload(doc))
-

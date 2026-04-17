@@ -21,8 +21,8 @@ from lmms_eval import utils
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
-from lmms_eval.imports import optional_import
 from lmms_eval.api.visual_payload import flatten_visual_inputs
+from lmms_eval.imports import optional_import
 
 process_vision_info, _has_qwen_vl = optional_import("qwen_vl_utils", "process_vision_info")
 if not _has_qwen_vl:
@@ -69,7 +69,7 @@ class Qwen3_VL(lmms):
             self.device_map = f"cuda:{accelerator.local_process_index}"
         else:
             self._device = torch.device(device)
-            self.device_map = device if device_map in (None, '', 'auto') else device_map
+            self.device_map = device if device_map in (None, "", "auto") else device_map
 
         # Prepare model loading arguments
         model_kwargs = {

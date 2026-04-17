@@ -15,7 +15,10 @@ from transformers.generation import GenerationMixin
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
-from lmms_eval.api.visual_payload import flatten_visual_inputs, normalize_visual_payloads
+from lmms_eval.api.visual_payload import (
+    flatten_visual_inputs,
+    normalize_visual_payloads,
+)
 
 eval_logger = logging.getLogger("eval_logger")
 

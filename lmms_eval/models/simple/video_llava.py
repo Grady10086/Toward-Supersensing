@@ -4,10 +4,10 @@ from typing import List, Optional, Tuple, Union
 import av
 import numpy as np
 import torch
-from PIL import Image
 from accelerate import Accelerator, DistributedType, InitProcessGroupKwargs
 from accelerate.state import AcceleratorState
 from loguru import logger
+from PIL import Image
 from tqdm import tqdm
 
 from lmms_eval.api.instance import Instance
@@ -18,8 +18,11 @@ eval_logger = logger
 
 from transformers import VideoLlavaForConditionalGeneration, VideoLlavaProcessor
 
+from lmms_eval.api.visual_payload import (
+    flatten_visual_inputs,
+    normalize_visual_payloads,
+)
 from lmms_eval.models.model_utils.load_video import read_video
-from lmms_eval.api.visual_payload import flatten_visual_inputs, normalize_visual_payloads
 
 
 @register_model("video_llava")

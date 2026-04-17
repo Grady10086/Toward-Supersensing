@@ -15,7 +15,12 @@ from lmms_eval import utils
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
-from lmms_eval.api.visual_payload import KIND_IMAGE_SEQUENCE, KIND_LEGACY_ITEMS, KIND_VIDEO_PATH, normalize_visual_payloads
+from lmms_eval.api.visual_payload import (
+    KIND_IMAGE_SEQUENCE,
+    KIND_LEGACY_ITEMS,
+    KIND_VIDEO_PATH,
+    normalize_visual_payloads,
+)
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
@@ -256,9 +261,7 @@ class VideoChat_Flash(lmms):
 
                 video_path, media_dict, extra_images = self._resolve_visual_inputs(visual)
                 if extra_images:
-                    raise NotImplementedError(
-                        "videochat_flash does not support Cambrian-W frame-recall requests with extra question images."
-                    )
+                    raise NotImplementedError("videochat_flash does not support Cambrian-W frame-recall requests with extra question images.")
                 if not video_path:
                     raise NotImplementedError(f"Missing video payload for request: task={task}, metadata={metadata}")
 

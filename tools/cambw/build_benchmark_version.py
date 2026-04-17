@@ -21,6 +21,7 @@ if str(REPO_ROOT) not in sys.path:
 from huggingface_hub import hf_hub_download
 
 from lmms_eval.tasks.cambw.identity import compute_doc_uid, compute_eval_uid
+
 DEFAULT_OUT_ROOT = REPO_ROOT / "lmms_eval" / "tasks" / "cambw" / "benchmarks"
 DEFAULT_PART1_CORRECTED = "https://huggingface.co/datasets/Torwnexial/ready4label/resolve/main/new_long_video/corrected_json_3"
 DEFAULT_PART23_CORRECTED = "https://huggingface.co/datasets/Torwnexial/ready4label/resolve/main/top20merge_full/corrected_json_4"
@@ -251,10 +252,7 @@ def compute_global_appearance_order(raw: Dict[str, Any], subset_concepts: List[s
     if is_first:
         clip_pos = {concept: first_seen_clip(counts) for concept, counts in counts_by_concept.items()}
     else:
-        clip_pos = {
-            concept: last_seen_clip_up_to(counts, max(counts) if counts else -1)
-            for concept, counts in counts_by_concept.items()
-        }
+        clip_pos = {concept: last_seen_clip_up_to(counts, max(counts) if counts else -1) for concept, counts in counts_by_concept.items()}
 
     ordered = [concept for concept in raw_order if concept in subset_concepts]
     remaining = [concept for concept in subset_concepts if concept not in ordered]
@@ -300,11 +298,7 @@ def patch_appearance_task(task: Dict[str, Any], raw: Dict[str, Any], video_name:
 
     for checkpoint in task.get("checkpoints") or []:
         clip_idx = int(checkpoint.get("clip_idx", 0))
-        seen, checkpoint_order = (
-            compute_first_order(raw, subset_concepts, clip_idx)
-            if is_first
-            else compute_last_order(raw, subset_concepts, clip_idx)
-        )
+        seen, checkpoint_order = compute_first_order(raw, subset_concepts, clip_idx) if is_first else compute_last_order(raw, subset_concepts, clip_idx)
         actual_order = global_order
         checkpoint["concepts_seen"] = seen
         checkpoint["correct_order"] = actual_order
@@ -325,8 +319,7 @@ def patch_appearance_task(task: Dict[str, Any], raw: Dict[str, Any], video_name:
             if (
                 len(normalized_options) == 4
                 and all(len(option) == len(actual_order) for option in normalized_options)
-                and
-                actual_order in normalized_options
+                and actual_order in normalized_options
                 and len(normalized_text) == len(set(normalized_text))
                 and normalized_text.count(correct_text) == 1
             ):

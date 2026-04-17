@@ -1,5 +1,5 @@
-from datetime import timedelta
 import os
+from datetime import timedelta
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
@@ -20,7 +20,10 @@ from transformers import AutoModel, AutoTokenizer
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
-from lmms_eval.api.visual_payload import flatten_visual_inputs, normalize_visual_payloads
+from lmms_eval.api.visual_payload import (
+    flatten_visual_inputs,
+    normalize_visual_payloads,
+)
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
