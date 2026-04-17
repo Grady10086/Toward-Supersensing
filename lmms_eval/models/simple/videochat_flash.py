@@ -15,6 +15,7 @@ from lmms_eval import utils
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
+from lmms_eval.api.visual_payload import KIND_IMAGE_SEQUENCE, KIND_LEGACY_ITEMS, KIND_VIDEO_PATH, normalize_visual_payloads
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
@@ -46,7 +47,7 @@ class VideoChat_Flash(lmms):
         batch_size: Optional[Union[int, str]] = 1,
         device_map: Optional[str] = "cuda:0",
         use_cache: Optional[bool] = True,
-        max_num_frames: Optional[int] = 32,
+        max_num_frames: Optional[int] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -67,7 +68,8 @@ class VideoChat_Flash(lmms):
             self._device = torch.device(f"cuda:{accelerator.local_process_index}")
             self.device_map = f"cuda:{accelerator.local_process_index}"
 
-        self.max_num_frames = max_num_frames
+        # `-1` is the model-side sentinel for "do not cap sampled frames".
+        self.max_num_frames = -1 if max_num_frames is None else int(max_num_frames)
 
         self._tokenizer = AutoTokenizer.from_pretrained(pretrained, trust_remote_code=True)
         self._model = AutoModel.from_pretrained(pretrained, trust_remote_code=True).half().cuda()
@@ -187,33 +189,51 @@ class VideoChat_Flash(lmms):
                 new_list.append(j)
         return new_list
 
+    def _resolve_visual_inputs(self, visual):
+        video_path = None
+        media_dict = {"video_read_type": "decord"}
+        extra_images = []
+
+        for payload in normalize_visual_payloads(visual):
+            kind = payload.get("kind")
+            metadata = payload.get("metadata") or {}
+
+            if kind == KIND_VIDEO_PATH:
+                if video_path is not None:
+                    raise NotImplementedError("videochat_flash only supports a single video payload per request.")
+                video_path = payload.get("video_path")
+                media_dict = {"video_read_type": metadata.get("video_read_type", "decord")}
+                if "start" in metadata and "end" in metadata:
+                    media_dict["start"] = metadata["start"]
+                    media_dict["end"] = metadata["end"]
+            elif kind == KIND_IMAGE_SEQUENCE:
+                extra_images.extend(payload.get("images") or [])
+            elif kind == KIND_LEGACY_ITEMS:
+                for item in payload.get("items") or []:
+                    if isinstance(item, str):
+                        if video_path is not None:
+                            raise NotImplementedError("videochat_flash only supports a single video path per request.")
+                        video_path = item
+                    elif isinstance(item, dict):
+                        media_dict.update(item)
+                    elif isinstance(item, PIL.Image.Image):
+                        extra_images.append(item)
+                    else:
+                        raise NotImplementedError(f"Unsupported legacy visual item: {type(item)}")
+            else:
+                raise NotImplementedError(f"Unsupported visual payload kind: {kind}")
+
+        return video_path, media_dict, extra_images
+
     def generate_until(self, requests: List[Instance]) -> List[str]:
         res = []
+        pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
 
-        def _collate(x):
-            toks = self.tok_encode(x[0])
-            return -len(toks), x[0]
-
-        # we group requests by their generation_kwargs,
-        # so that we don't try to execute e.g. greedy sampling and temp=0.8 sampling
-        # in the same batch.
-        metadata = requests[0].metadata
-
-        re_ords = utils.Collator([reg.args for reg in requests], _collate, grouping=True)
-        chunks = re_ords.get_batched(n=self.batch_size, batch_fn=None)
-        num_iters = len(requests) // self.batch_size if len(requests) % self.batch_size == 0 else len(requests) // self.batch_size + 1
-        pbar = tqdm(total=num_iters, disable=(self.rank != 0), desc="Model Responding")
-        for chunk in chunks:
-            batched_contexts, all_gen_kwargs, batched_doc_to_visual, batched_doc_id, batched_task, batched_split = zip(*chunk)
-
-            task = batched_task[0]
-            split = batched_split[0]
-            batched_visuals = [batched_doc_to_visual[0](self.task_dict[task][split][ids]) for ids in batched_doc_id]  # [B, N]
-            assert len(batched_visuals) == 1
-
-            # we assume all gen kwargs in the batch are the same
-            # this is safe to assume because the `grouper` object ensures it.
-            gen_kwargs = all_gen_kwargs[0]
+        for request in requests:
+            metadata = request.metadata or {}
+            context, gen_kwargs, doc_to_visual, doc_id, task, split = request.args
+            batched_visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
+            gen_kwargs = dict(gen_kwargs)
             if "until" in gen_kwargs:
                 gen_kwargs.pop("until")
 
@@ -229,54 +249,47 @@ class VideoChat_Flash(lmms):
             if "num_beams" not in gen_kwargs:
                 gen_kwargs["num_beams"] = 1
 
-            question_input = []
-            text_outputs = []
-            for visual, context in zip(batched_visuals, batched_contexts):
+            for visual in batched_visuals:
                 if len(visual) > 1 or "image_aspect_ratio" not in self._config.__dict__:  # for multi image case, we treat per image aspect ratio as "pad" by default.
-                    self._config.image_aspect_ratio = getattr(gen_kwargs, "image_aspect_ratio", "pad")
+                    self._config.image_aspect_ratio = gen_kwargs.get("image_aspect_ratio", "pad")
                     eval_logger.info(f"Setting image aspect ratio: {self._config.image_aspect_ratio}")
 
-                if type(visual[0]) == PIL.Image.Image:  # and "task_type" not in metadata and "sample_frames" not in metadata:  # For image task
-                    raise NotImplementedError(f"I don't want image task now: {visual}, {task}, {metadata}")
+                video_path, media_dict, extra_images = self._resolve_visual_inputs(visual)
+                if extra_images:
+                    raise NotImplementedError(
+                        "videochat_flash does not support Cambrian-W frame-recall requests with extra question images."
+                    )
+                if not video_path:
+                    raise NotImplementedError(f"Missing video payload for request: task={task}, metadata={metadata}")
 
-                elif type(visual[0]) == str:  # For video task
-                    if len(visual) > 1:
-                        assert len(visual) == 2, visual
-                        media_dict = visual[1]
-                    else:
-                        media_dict = {"video_read_type": "decord"}
+                if isinstance(video_path, str):  # For video task
+                    response = self.model.chat(
+                        video_path,
+                        self.tokenizer,
+                        context,
+                        chat_history=None,
+                        return_history=False,
+                        max_num_frames=self.max_num_frames,
+                        media_dict=media_dict,
+                        generation_config={
+                            "max_new_tokens": gen_kwargs["max_new_tokens"],
+                            "temperature": gen_kwargs["temperature"],
+                            "do_sample": gen_kwargs["do_sample"],
+                            "top_p": gen_kwargs["top_p"],
+                            "num_beams": gen_kwargs["num_beams"],
+                        },
+                    )
+                    response = response.strip()
+                    res.append(response)
+                    self.cache_hook.add_partial("generate_until", (context, gen_kwargs), [response])
 
-                    video_path = visual[0]
-                    question_input.append(context)
+                else:
+                    raise NotImplementedError(f"Unsupported resolved video input: {type(video_path)}")
 
-                    try:
-                        response = self.model.chat(
-                            video_path,
-                            self.tokenizer,
-                            context,
-                            chat_history=None,
-                            return_history=False,
-                            max_num_frames=self.max_num_frames,
-                            media_dict=media_dict,
-                            generation_config={
-                                "max_new_tokens": gen_kwargs["max_new_tokens"],
-                                "temperature": gen_kwargs["temperature"],
-                                "do_sample": gen_kwargs["do_sample"],
-                                "top_p": gen_kwargs["top_p"],
-                                "num_beams": gen_kwargs["num_beams"],
-                            },
-                        )
-
-                        text_outputs.append(response)
-                    except Exception as e:
-                        raise e
-
-            text_outputs = [response.strip() for response in text_outputs]
-            res.extend(text_outputs)
-            self.cache_hook.add_partial("generate_until", (context, gen_kwargs), text_outputs)
             pbar.update(1)
-            # reorder this group of results back to original unsorted form
-        res = re_ords.get_original(res)
 
         pbar.close()
         return res
+
+    def generate_until_multi_round(self, requests):
+        return self.generate_until(requests)

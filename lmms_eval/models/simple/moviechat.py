@@ -21,6 +21,7 @@ from lmms_eval import utils
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
+from lmms_eval.api.visual_payload import KIND_IMAGE_SEQUENCE, KIND_LEGACY_ITEMS, KIND_VIDEO_PATH, normalize_visual_payloads
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
@@ -83,10 +84,12 @@ class MovieChat(lmms):
         sliding_window_length: Optional[int] = 8,
         merge_frame_length: Optional[int] = 2,
         tmp_folder: Optional[str] = "tmp/",
+        max_num_frames: Optional[int] = None,
         **kwargs,
     ) -> None:
         super().__init__()
-        # Do not use kwargs for now
+        # Ignore wrapper-passed frame cap for compatibility; MovieChat uses its own memory settings.
+        kwargs.pop("max_num_frames", None)
         assert kwargs == {}, f"Unexpected kwargs: {kwargs}"
 
         accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))
@@ -107,8 +110,10 @@ class MovieChat(lmms):
         model_config = {
             "arch": "moviechat",
             "model_type": "pretrain_vicuna",
+            "image_size": 224,
             "freeze_vit": True,
             "freeze_qformer": True,
+            "num_query_token": 32,
             "max_txt_len": 256,
             "end_sym": "###",
             "low_resource": False,
@@ -249,6 +254,45 @@ class MovieChat(lmms):
                 new_list.append(j)
         return new_list
 
+    def _resolve_video_input(self, visual, task):
+        video_path = None
+        extra_images = []
+
+        for payload in normalize_visual_payloads(visual):
+            kind = payload.get("kind")
+            metadata = payload.get("metadata") or {}
+
+            if kind == KIND_VIDEO_PATH:
+                if video_path is not None:
+                    raise NotImplementedError("MovieChat only supports one video payload per request.")
+                if metadata.get("sampling") or metadata.get("fps") or metadata.get("max_num_frames") is not None:
+                    raise NotImplementedError(
+                        "MovieChat does not honor lmms-eval video sampling payloads; strict Cambrian-W protocol runs are unsupported."
+                    )
+                video_path = payload.get("video_path")
+            elif kind == KIND_IMAGE_SEQUENCE:
+                extra_images.extend(payload.get("images") or [])
+            elif kind == KIND_LEGACY_ITEMS:
+                for item in payload.get("items") or []:
+                    if isinstance(item, str):
+                        if video_path is not None:
+                            raise NotImplementedError("MovieChat only supports one video path per request.")
+                        video_path = item
+                    elif isinstance(item, PIL.Image.Image):
+                        extra_images.append(item)
+                    else:
+                        raise NotImplementedError(f"Unsupported legacy MovieChat visual item: {type(item)}")
+            else:
+                raise NotImplementedError(f"Unsupported MovieChat visual payload kind: {kind}")
+
+        if extra_images:
+            raise NotImplementedError(
+                f"MovieChat does not support extra question images required by task '{task}'."
+            )
+        if not video_path:
+            raise NotImplementedError(f"MovieChat received no usable video input for task '{task}'.")
+        return video_path
+
     def get_context_emb(self, input_text, img_list):
         prompt_1 = "You are able to understand the visual content that the user provides.Follow the instructions carefully and explain your answers in details.###Human: <Video><ImageHere></Video>"
         prompt_2 = input_text
@@ -345,7 +389,8 @@ class MovieChat(lmms):
                 elif "task_type" in metadata and metadata["task_type"] == "video" and "sample_frames" in metadata:
                     raise NotImplementedError("MovieChat only supports video inputs.")
 
-                elif type(visual[0]) == str:  # For video task
+                else:  # For video task
+                    video_path = self._resolve_video_input(visual, task)
                     image_tensor = []
                     self.model.short_memory_buffer = []
                     self.model.long_memory_buffer = []
@@ -353,7 +398,7 @@ class MovieChat(lmms):
                     # try:
                     os.makedirs(self.tmp_folder, exist_ok=True)
 
-                    video = VideoFileClip(visual[0])
+                    video = VideoFileClip(video_path)
                     clip_duration = video.duration / self.num_clips
 
                     cur_frame = 0
@@ -437,3 +482,6 @@ class MovieChat(lmms):
 
         pbar.close()
         return res
+
+    def generate_until_multi_round(self, requests):
+        return self.generate_until(requests)

@@ -85,7 +85,11 @@ class Llava_OneVision(lmms):
         **kwargs,
     ) -> None:
         super().__init__()
-        # Do not use kwargs for now
+        # Accept common frame-count aliases used by the unified Cambrian-W launcher.
+        if "max_num_frames" in kwargs and "max_frames_num" not in kwargs:
+            max_frames_num = int(kwargs.pop("max_num_frames"))
+        if "num_frame" in kwargs and "max_frames_num" not in kwargs:
+            max_frames_num = int(kwargs.pop("num_frame"))
         assert kwargs == {}, f"Unexpected kwargs: {kwargs}"
 
         accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))

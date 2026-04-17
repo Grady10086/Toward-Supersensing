@@ -20,6 +20,7 @@ from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
 from lmms_eval.imports import optional_import
 from lmms_eval.models.model_utils.media_encoder import encode_image_to_data_url
+from lmms_eval.api.visual_payload import flatten_visual_inputs
 
 process_vision_info, _has_qwen_vl = optional_import("qwen_vl_utils", "process_vision_info")
 if not _has_qwen_vl:
@@ -43,7 +44,7 @@ class Qwen2_5_VL(lmms):
         attn_implementation: Optional[str] = None,
         min_pixels: int = 256 * 28 * 28,
         max_pixels: int = 1605632,
-        max_num_frames: int = 32,
+        max_num_frames: Optional[int] = None,
         fps: Optional[float] = None,
         system_prompt: Optional[str] = "You are a helpful assistant.",
         interleave_visuals: Optional[bool] = False,
@@ -66,7 +67,7 @@ class Qwen2_5_VL(lmms):
             self.device_map = f"cuda:{accelerator.local_process_index}"
         else:
             self._device = torch.device(device)
-            self.device_map = device_map if device_map else device
+            self.device_map = device if device_map in (None, '', 'auto') else device_map
 
         # Prepare model loading arguments
         model_kwargs = {
@@ -199,7 +200,7 @@ class Qwen2_5_VL(lmms):
             contexts, all_gen_kwargs, doc_to_visual, doc_id, task, split = zip(*chunk)
             task = task[0]
             split = split[0]
-            visual_list = [doc_to_visual[0](self.task_dict[task][split][ids]) for ids in doc_id]
+            visual_list = [flatten_visual_inputs(doc_to_visual[0](self.task_dict[task][split][ids])) for ids in doc_id]
             gen_kwargs = all_gen_kwargs[0]
 
             # Set default until or update values from gen_kwargs if present
@@ -289,7 +290,7 @@ class Qwen2_5_VL(lmms):
 
             texts = self.processor.apply_chat_template(batched_messages, tokenize=False, add_generation_prompt=True)
             image_inputs, video_inputs = process_vision_info(batched_messages)
-            if video_inputs is not None:
+            if video_inputs is not None and self.max_num_frames is not None:
                 total_frames = video_inputs[0].shape[0]
                 indices = np.linspace(0, total_frames - 1, self.max_num_frames, dtype=int)
                 # Ensure unique indices if linspace produces duplicates for few frames
@@ -308,10 +309,7 @@ class Qwen2_5_VL(lmms):
                 padding_side=padding_side,
                 return_tensors="pt",
             )
-            if self.device_map == "auto":
-                inputs = inputs.to("cuda")
-            else:
-                inputs = inputs.to(self.device)
+            inputs = inputs.to(self.device)
 
             # Set default generation kwargs
             default_gen_kwargs = {
@@ -393,7 +391,7 @@ class Qwen2_5_VL(lmms):
             ) = zip(*chunk)
             task = batched_task[0]
             split = batched_split[0]
-            batched_visuals = [batched_doc_to_visual[0](self.task_dict[task][split][ids]) for ids in batched_doc_id]
+            batched_visuals = [flatten_visual_inputs(batched_doc_to_visual[0](self.task_dict[task][split][ids])) for ids in batched_doc_id]
             assert len(batched_visuals) == 1
 
             gen_kwargs = all_gen_kwargs[0]
@@ -505,7 +503,7 @@ class Qwen2_5_VL(lmms):
 
                 texts = [self.processor.apply_chat_template(msg, tokenize=False, add_generation_prompt=True) for msg in batched_messages]
                 image_inputs, video_inputs = process_vision_info(batched_messages)
-                if video_inputs is not None:
+                if video_inputs is not None and self.max_num_frames is not None:
                     total_frames = video_inputs[0].shape[0]
                     indices = np.linspace(0, total_frames - 1, self.max_num_frames, dtype=int)
                     indices = np.unique(indices)
@@ -521,10 +519,7 @@ class Qwen2_5_VL(lmms):
                     return_tensors="pt",
                 )
 
-                if self.device_map == "auto":
-                    inputs = inputs.to("cuda")
-                else:
-                    inputs = inputs.to(self.device)
+                inputs = inputs.to(self.device)
 
                 default_gen_kwargs = {
                     "max_new_tokens": 32768,

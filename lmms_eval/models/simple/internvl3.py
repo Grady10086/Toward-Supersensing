@@ -1,4 +1,6 @@
 from datetime import timedelta
+import os
+from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
 import numpy as np
@@ -18,6 +20,7 @@ from transformers import AutoModel, AutoTokenizer
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
+from lmms_eval.api.visual_payload import flatten_visual_inputs, normalize_visual_payloads
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -27,6 +30,35 @@ DEFAULT_GEN_KWARGS = dict(
     max_new_tokens=1024,
     do_sample=False,
 )
+
+
+def resolve_local_hf_snapshot(pretrained: str) -> str:
+    """Prefer an existing local HF snapshot when available.
+
+    This avoids offline-mode failures where the cache contains a complete
+    snapshot but repo-id resolution is still blocked by hub lookups.
+    """
+    if not pretrained or Path(pretrained).exists() or "/" not in pretrained:
+        return pretrained
+
+    hf_home = Path(os.environ.get("HF_HOME", str(Path.home() / ".cache" / "huggingface")))
+    model_cache_dir = hf_home / f"models--{pretrained.replace('/', '--')}"
+    snapshots_dir = model_cache_dir / "snapshots"
+    if not snapshots_dir.exists():
+        return pretrained
+
+    refs_main = model_cache_dir / "refs" / "main"
+    if refs_main.exists():
+        revision = refs_main.read_text().strip()
+        if revision:
+            snapshot_dir = snapshots_dir / revision
+            if snapshot_dir.exists():
+                return str(snapshot_dir)
+
+    snapshot_candidates = sorted((path for path in snapshots_dir.iterdir() if path.is_dir()), key=lambda path: path.name)
+    if snapshot_candidates:
+        return str(snapshot_candidates[-1])
+    return pretrained
 
 
 def build_transform(input_size: int) -> T.Compose:
@@ -218,6 +250,78 @@ def load_video(
     return pixel_values_tensor, num_patches_list
 
 
+def load_video_context_images(
+    video_path: str,
+    fps: float = 1.0,
+    max_num_frames: Optional[int] = None,
+) -> List[Image.Image]:
+    """Materialize strict fps-based video context as images for image-token models.
+
+    This preserves Toward Supersensing's original frame_recall semantics for
+    models like InternVL that operate on image tokens rather than mixed
+    video-plus-image chat messages.
+    """
+    vr = VideoReader(video_path, ctx=cpu(0), num_threads=1)
+    if len(vr) == 0:
+        return []
+
+    avg_fps = float(vr.get_avg_fps()) if vr.get_avg_fps() else 1.0
+    sample_every = max(1, round(avg_fps / max(fps, 1e-6)))
+    frame_indices = list(range(0, len(vr), sample_every))
+    if max_num_frames is not None and max_num_frames > 0 and len(frame_indices) > max_num_frames:
+        sampled = np.linspace(0, len(frame_indices) - 1, max_num_frames, dtype=int)
+        frame_indices = [frame_indices[idx] for idx in sampled]
+
+    return [Image.fromarray(vr[idx].asnumpy()).convert("RGB") for idx in frame_indices]
+
+
+def materialize_strict_mixed_visuals(visual_payloads) -> Optional[Tuple[List[Image.Image], str]]:
+    if not visual_payloads or visual_payloads[0].get("kind") != "video_path":
+        return None
+
+    video_payload = visual_payloads[0]
+    metadata = video_payload.get("metadata") or {}
+    has_strict_video_metadata = any(key in metadata for key in ("fps", "max_num_frames", "max_frames", "sampling"))
+    if len(visual_payloads) == 1 and not has_strict_video_metadata:
+        return None
+
+    video_fps = float(metadata.get("fps") or 1.0)
+    max_frames_value = metadata.get("max_num_frames")
+    if max_frames_value is None:
+        max_frames_value = metadata.get("max_frames")
+    max_num_frames = int(max_frames_value) if max_frames_value is not None else None
+    context_images = load_video_context_images(video_payload["video_path"], fps=video_fps, max_num_frames=max_num_frames)
+
+    question_images: List[Image.Image] = []
+    for payload in visual_payloads[1:]:
+        kind = payload.get("kind")
+        if kind == "image_sequence":
+            question_images.extend([image.convert("RGB") for image in payload.get("images", [])])
+            continue
+        if kind == "legacy_items":
+            legacy_images = []
+            for item in payload.get("items", []):
+                if not isinstance(item, Image.Image):
+                    return None
+                legacy_images.append(item.convert("RGB"))
+            question_images.extend(legacy_images)
+            continue
+        return None
+
+    if not context_images:
+        return None
+
+    labels = ["A", "B", "C", "D"]
+    prefix_lines = [f"Context Frame {idx + 1}: <image>" for idx in range(len(context_images))]
+    for idx in range(len(question_images)):
+        if idx < len(labels):
+            prefix_lines.append(f"Frame {labels[idx]}: <image>")
+        else:
+            prefix_lines.append(f"Question Image {idx + 1}: <image>")
+
+    return context_images + question_images, "\n".join(prefix_lines)
+
+
 @register_model("internvl3")
 class InternVL3(lmms):
     """InternVL3 model wrapper for lmms-eval.
@@ -251,7 +355,10 @@ class InternVL3(lmms):
     ):
         super().__init__()
 
-        self.path = pretrained
+        resolved_pretrained = resolve_local_hf_snapshot(pretrained)
+        if resolved_pretrained != pretrained:
+            eval_logger.info(f"Resolved {pretrained} to local snapshot {resolved_pretrained}")
+        self.path = resolved_pretrained
         self.num_frame = num_frame
         self.max_num = max_num
         self.total_max_num = total_max_num
@@ -395,13 +502,24 @@ class InternVL3(lmms):
             for k in pop_keys:
                 gen_kwargs.pop(k)
 
-            visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
-            visuals = self.flatten(visuals)
+            raw_visuals = doc_to_visual(self.task_dict[task][split][doc_id])
+            visual_payloads = normalize_visual_payloads(raw_visuals)
+            strict_mixed_visuals = materialize_strict_mixed_visuals(visual_payloads)
+            strict_prefix = None
+            if strict_mixed_visuals is not None:
+                visuals, strict_prefix = strict_mixed_visuals
+                has_video_path = False
+            else:
+                visuals = flatten_visual_inputs(visual_payloads)
+                has_video_path = len(visual_payloads) == 1 and visual_payloads[0].get("kind") == "video_path"
 
-            if self.modality == "image":
+            if self.modality == "image" and not has_video_path:
                 if visuals:
                     # Dynamic max_num calculation like VLMEvalKit:
                     # max_num = max(1, min(self.max_num, self.total_max_num // image_num))
+                    if strict_prefix and contexts.count("<image>") == 0:
+                        contexts = strict_prefix + "\n" + contexts
+
                     image_num = len(visuals)
                     dynamic_max_num = max(1, min(self.max_num, self.total_max_num // image_num))
 
@@ -446,7 +564,7 @@ class InternVL3(lmms):
                     return_history=True,
                 )
 
-            elif self.modality == "video":
+            elif self.modality == "video" or has_video_path:
                 assert len(visuals) == 1, f"Only one video is supported, but got {len(visuals)} videos."
                 video_path = visuals[0]
 

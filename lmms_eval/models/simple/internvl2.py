@@ -10,10 +10,12 @@ from PIL import Image
 from torchvision.transforms.functional import InterpolationMode
 from tqdm import tqdm
 from transformers import AutoModel, AutoTokenizer
+from transformers.generation import GenerationMixin
 
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
+from lmms_eval.api.visual_payload import flatten_visual_inputs, normalize_visual_payloads
 
 eval_logger = logging.getLogger("eval_logger")
 
@@ -25,6 +27,15 @@ DEFAULT_GEN_KWARGS = dict(
     max_new_tokens=1024,
     do_sample=False,
 )
+
+
+def ensure_generate_compat(model):
+    language_model = getattr(model, "language_model", None)
+    if language_model is None or hasattr(language_model, "generate"):
+        return
+    cls = language_model.__class__
+    if not hasattr(cls, "generate"):
+        cls.generate = GenerationMixin.generate
 
 
 def build_transform(input_size):
@@ -195,6 +206,11 @@ class InternVL2(lmms):
     ):
         super().__init__()
 
+        if "max_num_frames" in kwargs:
+            num_frame = int(kwargs.pop("max_num_frames"))
+        if "max_frames_num" in kwargs:
+            num_frame = int(kwargs.pop("max_frames_num"))
+
         self.path = pretrained
         self.num_frame = num_frame
 
@@ -223,7 +239,9 @@ class InternVL2(lmms):
             trust_remote_code=True,
             device_map=self.device_map,
         ).eval()
+        ensure_generate_compat(self._model)
         self._tokenizer = AutoTokenizer.from_pretrained(self.path, trust_remote_code=True, device_map=self.device_map)
+        self._config = self._model.config
 
         if accelerator.num_processes > 1:
             assert accelerator.distributed_type in [
@@ -322,16 +340,23 @@ class InternVL2(lmms):
             for k in pop_keys:
                 gen_kwargs.pop(k)
 
-            visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
-            visuals = self.flatten(visuals)
-            if self.modality == "image":
+            raw_visuals = doc_to_visual(self.task_dict[task][split][doc_id])
+            visual_payloads = normalize_visual_payloads(raw_visuals)
+            visuals = flatten_visual_inputs(visual_payloads)
+            has_video_path = len(visual_payloads) == 1 and visual_payloads[0].get("kind") == "video_path"
+            if self.modality == "image" and not has_video_path:
                 if visuals:
-                    visuals = [load_image(visual).to(torch.bfloat16).to(self._device) for visual in visuals]
-                    pixel_values = torch.cat(visuals, dim=0)
-                    num_patches_list = [visual.size(0) for visual in visuals]
-                    image_tokens = ["<image>"] * len(visuals)
-                    image_tokens = " ".join(image_tokens)
-                    contexts = image_tokens + "\n" + contexts
+                    processed_visuals = [load_image(visual).to(torch.bfloat16).to(self._device) for visual in visuals]
+                    pixel_values = torch.cat(processed_visuals, dim=0)
+                    num_patches_list = [visual.size(0) for visual in processed_visuals]
+                    existing_tags = contexts.count("<image>")
+                    if existing_tags == 0:
+                        image_tokens = " ".join(["<image>"] * len(processed_visuals))
+                        contexts = image_tokens + "\n" + contexts
+                    elif existing_tags != len(processed_visuals):
+                        eval_logger.warning(f"[InternVL2] Token mismatch: text has {existing_tags} tags but {len(processed_visuals)} images provided; prepending image tokens.")
+                        image_tokens = " ".join(["<image>"] * len(processed_visuals))
+                        contexts = image_tokens + "\n" + contexts
                 else:
                     pixel_values = None
                     num_patches_list = None
@@ -344,7 +369,7 @@ class InternVL2(lmms):
                     history=None,
                     return_history=True,
                 )
-            elif self.modality == "video":
+            elif self.modality == "video" or has_video_path:
                 assert len(visuals) == 1, f"Only one video is supported, but got {len(visuals)} videos."
                 video_path = visuals[0]
                 pixel_values, num_patches_list = load_video(video_path, num_segments=self.num_frame)

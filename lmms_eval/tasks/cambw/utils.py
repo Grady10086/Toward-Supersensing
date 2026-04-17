@@ -10,6 +10,8 @@ from typing import Any, Dict, List, Tuple
 import av
 import numpy as np
 from PIL import Image
+from lmms_eval.api.visual_payload import make_image_sequence_payload, make_video_path_payload
+from lmms_eval.tasks.cambw.identity import compute_doc_uid, compute_eval_uid
 
 try:
     from decord import VideoReader, cpu
@@ -17,8 +19,36 @@ except ImportError:  # pragma: no cover - optional fast path
     VideoReader = None
     cpu = None
 
-FRAME_RECALL_CONTEXT_FRAMES = 12
+FRAME_RECALL_CONTEXT_FRAMES = None
 FRAME_RECALL_LABELS = ("A", "B", "C", "D")
+DEFAULT_VIDEO_PROTOCOL = "full_fps1"
+DEFAULT_VIDEO_FPS = 1.0
+DEFAULT_VIDEO_MAX_FRAMES = 128
+
+
+def _resolve_video_protocol() -> tuple[str, float | None, int | None]:
+    protocol = (os.getenv("CAMBW_VIDEO_PROTOCOL", DEFAULT_VIDEO_PROTOCOL) or DEFAULT_VIDEO_PROTOCOL).strip().lower()
+    if protocol == "full_fps1":
+        fps = _as_float_or_none(os.getenv("CAMBW_VIDEO_FPS"))
+        return protocol, fps if fps is not None else DEFAULT_VIDEO_FPS, None
+    if protocol == "uniform_max_frames":
+        raw = os.getenv("CAMBW_VIDEO_MAX_FRAMES")
+        try:
+            max_frames = int(raw) if raw is not None else DEFAULT_VIDEO_MAX_FRAMES
+        except (TypeError, ValueError):
+            max_frames = DEFAULT_VIDEO_MAX_FRAMES
+        return protocol, None, max_frames
+    raise ValueError(f"Unsupported Cambrian-W video protocol: {protocol}")
+
+
+def _build_video_context_payload(video_path: str):
+    protocol, fps, max_frames = _resolve_video_protocol()
+    metadata = {"role": "video_context"}
+    if protocol == "full_fps1":
+        metadata.update({"sampling": "fps1_full_context", "fps": fps})
+    else:
+        metadata.update({"sampling": f"uniform_max{max_frames}_context", "max_num_frames": max_frames})
+    return make_video_path_payload(video_path, **metadata)
 
 
 def _as_float_or_none(value: Any) -> float | None:
@@ -144,23 +174,19 @@ def _format_frame_label_list(count: int) -> str:
 
 
 def _build_frame_recall_intro(video_path: str, frame_indices: Tuple[int, ...]) -> str:
-    total_frames = _probe_total_frames(video_path)
-    context_count = min(FRAME_RECALL_CONTEXT_FRAMES, total_frames) if total_frames > 0 else FRAME_RECALL_CONTEXT_FRAMES
     question_count = len(frame_indices)
     frame_labels = _format_frame_label_list(question_count)
-    return f"The first {context_count} images are uniformly sampled from the video; " f"the next {question_count} are {frame_labels} (in order).\n\n"
+    protocol, fps, max_frames = _resolve_video_protocol()
+    if protocol == "full_fps1":
+        prefix = f"The video should be sampled at {fps:g} FPS as temporal context without a frame cap. "
+    else:
+        prefix = f"The video should be represented by up to {max_frames} uniformly sampled context frames from the full video. "
+    return prefix + f"The additional {question_count} images are {frame_labels} (in order) from the question.\n\n"
 
 
-def _build_frame_recall_visuals(video_path: str, frame_indices: Tuple[int, ...]) -> List[Any]:
-    total_frames = _probe_total_frames(video_path)
-    if total_frames <= 0:
-        return []
-
-    context_count = min(FRAME_RECALL_CONTEXT_FRAMES, total_frames)
-    context_indices = tuple(np.linspace(0, total_frames - 1, context_count, dtype=int).tolist())
-    visuals = _clone_images(_load_frames(video_path, context_indices))
-    visuals.extend(_clone_images(_load_frames(video_path, frame_indices)))
-    return visuals
+def _build_frame_recall_question_visuals(video_path: str, frame_indices: Tuple[int, ...]) -> List[Any]:
+    question_frames = _clone_images(_load_frames(video_path, frame_indices))
+    return question_frames
 
 
 def clean_question_for_prompt(question: str) -> str:
@@ -253,19 +279,31 @@ def doc_to_text(doc: Dict[str, Any]) -> str:
 def doc_to_visual(doc: Dict[str, Any]) -> List[Any]:
     """
     Extract visual content from document.
-    - frame_recall tasks: 12 sampled context frames + checkpoint frames as images
+    - frame_recall tasks: fps=1 video context + checkpoint frames as extra images
     - other tasks: full video path
     """
     video_path = doc.get("video_path")
     task_type = (doc.get("task_type") or "").lower()
     frame_indices = _normalize_frame_indices(doc.get("frame_indices"))
 
-    if "frame_recall" in task_type and frame_indices:
-        visuals = _build_frame_recall_visuals(video_path, frame_indices)
-        if visuals:
-            return visuals
+    if not video_path:
+        return []
 
-    return [video_path] if video_path else []
+    if "frame_recall" in task_type and frame_indices:
+        payloads = [_build_video_context_payload(video_path)]
+        question_visuals = _build_frame_recall_question_visuals(video_path, frame_indices)
+        if question_visuals:
+            payloads.append(
+                make_image_sequence_payload(
+                    question_visuals,
+                    source_video_path=video_path,
+                    frame_indices=list(frame_indices),
+                    role="question_frames",
+                )
+            )
+        return payloads
+
+    return [_build_video_context_payload(video_path)]
 
 
 def doc_to_target(doc: Dict[str, Any]) -> Any:
@@ -291,6 +329,11 @@ def process_results(doc: Dict[str, Any], results: List[str]) -> Dict[str, Any]:
 
     out = {
         "doc_id": doc.get("doc_id"),
+        "eval_uid": doc.get("eval_uid") or compute_eval_uid(doc),
+        "doc_uid": doc.get("doc_uid") or compute_doc_uid(doc),
+        "bench_version": doc.get("bench_version"),
+        "video_name": doc.get("video_name"),
+        "source_video_name": doc.get("source_video_name") or doc.get("video_name"),
         "gt": gt,
         "pred_raw": text,
         "task_type": doc.get("task_type") or "unknown",

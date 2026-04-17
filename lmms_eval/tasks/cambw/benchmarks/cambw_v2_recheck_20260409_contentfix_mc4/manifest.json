@@ -1,0 +1,54 @@
+{
+  "bench_version": "cambw_v2_recheck_20260409_contentfix_mc4",
+  "current_benchmark_dir": "lmms_eval/tasks/cambw/benchmarks/cambw_v2_recheck_20260409_localtest/source",
+  "part1_corrected_root": "/home/tione/notebook/tianjungu/datasets/ready4label_updates/new_long_video/corrected_json_3",
+  "part23_corrected_root": "/home/tione/notebook/tianjungu/datasets/ready4label_updates/top20merge_full/corrected_json_4",
+  "part1": {
+    "num_docs": 511,
+    "task_counts": {
+      "object_counting": 46,
+      "frame_recall_baseline": 117,
+      "frame_recall_rotated": 117,
+      "motion_direction": 127,
+      "first_appearance_recall_choice": 26,
+      "first_appearance_recall_direct": 26,
+      "last_appearance_recall_choice": 26,
+      "last_appearance_recall_direct": 26
+    }
+  },
+  "part2": {
+    "num_docs": 3688,
+    "task_counts": {
+      "frame_recall_baseline": 1278,
+      "frame_recall_rotated": 1278,
+      "motion_direction": 1132
+    }
+  },
+  "part3": {
+    "num_docs": 7822,
+    "task_counts": {
+      "object_counting": 1098,
+      "first_appearance_recall_choice": 1675,
+      "first_appearance_recall_direct": 1675,
+      "last_appearance_recall_choice": 1687,
+      "last_appearance_recall_direct": 1687
+    }
+  },
+  "part2_3": {
+    "num_docs": 11510,
+    "task_counts": {
+      "frame_recall_baseline": 1278,
+      "frame_recall_rotated": 1278,
+      "motion_direction": 1132,
+      "object_counting": 1098,
+      "first_appearance_recall_choice": 1675,
+      "first_appearance_recall_direct": 1675,
+      "last_appearance_recall_choice": 1687,
+      "last_appearance_recall_direct": 1687
+    }
+  },
+  "part2_merge": {
+    "merged_duplicate_videos": 2,
+    "removed_duplicate_tasks": 7
+  }
+}

@@ -1,7 +1,10 @@
 from datetime import timedelta
 from typing import List, Optional, Tuple, Union
 
+import av
+import numpy as np
 import torch
+from PIL import Image
 from accelerate import Accelerator, DistributedType, InitProcessGroupKwargs
 from accelerate.state import AcceleratorState
 from loguru import logger
@@ -16,6 +19,7 @@ eval_logger = logger
 from transformers import VideoLlavaForConditionalGeneration, VideoLlavaProcessor
 
 from lmms_eval.models.model_utils.load_video import read_video
+from lmms_eval.api.visual_payload import flatten_visual_inputs, normalize_visual_payloads
 
 
 @register_model("video_llava")
@@ -36,7 +40,7 @@ class VideoLLaVA(lmms):
         conv_template="llava_v1",
         use_cache=True,
         truncate_context=False,
-        num_frames: int = 8,  # whether to truncate the context in generation, set it False for LLaVA-1.6
+        num_frames: Optional[int] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -57,7 +61,6 @@ class VideoLLaVA(lmms):
         self._processor = VideoLlavaProcessor.from_pretrained(pretrained)
         self.prompt = "USER: <video>{}? ASSISTANT:"
         self.num_frames = num_frames
-        assert num_frames == 8, "num_frames must be 8 https://github.com/huggingface/transformers/blob/bdb9106f247fca48a71eb384be25dbbd29b065a8/src/transformers/models/video_llava/modeling_video_llava.py#L379"
         # self.model_name = get_model_name_from_path(pretrained)
         # self._tokenizer, self._model, self.processor, self._max_length = load_pretrained_model(pretrained, None, self.model_name, device_map=self.device_map)
         # self.video_processor = self.processor["video"]
@@ -170,23 +173,95 @@ class VideoLLaVA(lmms):
                 new_list.append(j)
         return new_list
 
+    def _probe_video_metadata(self, video_path):
+        container = av.open(video_path)
+        try:
+            stream = container.streams.video[0]
+            total_frames = int(stream.frames or 0)
+            frame_rate = float(stream.average_rate) if stream.average_rate is not None else None
+            if total_frames <= 0:
+                total_frames = 0
+                for total_frames, _ in enumerate(container.decode(video=0), start=1):
+                    pass
+            return total_frames, frame_rate
+        finally:
+            container.close()
+
+    def _resolve_video_frame_count(self, video_path, fps=None, max_frames=None):
+        total_frames, frame_rate = self._probe_video_metadata(video_path)
+        if total_frames <= 0:
+            fallback = max_frames if max_frames is not None else self.num_frames
+            return max(1, int(fallback or 1))
+
+        target = total_frames
+        if fps is not None and frame_rate and frame_rate > 0:
+            target = max(1, int(total_frames / frame_rate * float(fps)))
+        if max_frames is not None:
+            target = min(target, int(max_frames))
+        elif self.num_frames is not None:
+            target = min(target, int(self.num_frames))
+        return max(1, target)
+
+    def _decode_video_payload(self, payload):
+        metadata = payload.get("metadata") or {}
+        video_path = payload["video_path"]
+        fps = metadata.get("fps")
+        max_frames = metadata.get("max_num_frames")
+        if max_frames is None:
+            max_frames = metadata.get("max_frames")
+        target_frames = self._resolve_video_frame_count(video_path, fps=fps, max_frames=max_frames)
+        return read_video(video_path, num_frm=target_frames, fps=fps)
+
+    def _build_clip(self, visuals):
+        payloads = normalize_visual_payloads(visuals)
+        frames = []
+        for payload in payloads:
+            kind = payload.get("kind")
+            if kind == "video_path":
+                decoded = self._decode_video_payload(payload)
+                frames.extend(list(decoded))
+                continue
+            if kind == "image_sequence":
+                for image in payload.get("images", []):
+                    frames.append(np.asarray(image.convert("RGB"), dtype=np.uint8))
+                continue
+            if kind == "legacy_items":
+                for visual in payload.get("items", []):
+                    if isinstance(visual, Image.Image):
+                        frames.append(np.asarray(visual.convert("RGB"), dtype=np.uint8))
+                    elif isinstance(visual, np.ndarray) and visual.ndim == 3:
+                        frames.append(visual.astype(np.uint8, copy=False))
+                    elif isinstance(visual, str):
+                        decoded = read_video(visual, num_frm=self._resolve_video_frame_count(visual, fps=None, max_frames=self.num_frames))
+                        frames.extend(list(decoded))
+                    else:
+                        raise TypeError(f"Unsupported visual type for Video-LLaVA: {type(visual).__name__}")
+                continue
+            raise ValueError(f"Unsupported visual payload kind for Video-LLaVA: {kind}")
+
+        if not frames:
+            raise ValueError("No visuals provided to Video-LLaVA")
+
+        if self.num_frames is not None:
+            if len(frames) >= self.num_frames:
+                sample_idx = np.linspace(0, len(frames) - 1, self.num_frames, dtype=int)
+                frames = [frames[idx] for idx in sample_idx]
+            else:
+                while len(frames) < self.num_frames:
+                    frames.append(frames[-1].copy())
+
+        return np.stack(frames, axis=0)
+
     def generate_until(self, requests) -> List[str]:
         res = []
         pbar = tqdm(total=len(requests), disable=(self.rank != 0), desc="Model Responding")
 
         for contexts, gen_kwargs, doc_to_visual, doc_id, task, split in [reg.args for reg in requests]:
             # encode, pad, and truncate contexts for this batch
-            visuals = [doc_to_visual(self.task_dict[task][split][doc_id])]
-            visuals = self.flatten(visuals)
-            assert len(visuals) == 1
-            clip = read_video(visuals[0], self.num_frames)
+            visual_payloads = normalize_visual_payloads(doc_to_visual(self.task_dict[task][split][doc_id]))
+            clip = self._build_clip(visual_payloads)
 
             inputs = self._processor(text=self.prompt.format(contexts), videos=clip, return_tensors="pt")
-            pixel_values_videos = inputs["pixel_values_videos"]
-            if pixel_values_videos.shape[1] != self.num_frames:
-                empty_frames = torch.zeros((1, self.num_frames - pixel_values_videos.shape[1], *pixel_values_videos.shape[2:]), dtype=pixel_values_videos.dtype)
-                pixel_values_videos = torch.cat([pixel_values_videos, empty_frames], dim=1)
-                inputs["pixel_values_videos"] = pixel_values_videos
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
             if "max_new_tokens" not in gen_kwargs:
