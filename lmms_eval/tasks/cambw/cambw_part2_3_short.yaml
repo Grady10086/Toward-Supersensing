@@ -1,22 +1,20 @@
 # Cambrian-W Part2+3 Short Videos
 task: cambw_part2_3_short
-description: "Cambrian-W part2+3 short videos (434 videos, 11751 docs)"
+description: "Cambrian-W part2+3 short videos (cambw_v2_recheck_20260409_contentfix_mc4, 11049 docs)"
 dataset_path: json
 dataset_name: null
 dataset_kwargs:
   data_files:
-    test: lmms_eval/tasks/cambw/data/part2_3_short.jsonl
+    test: lmms_eval/tasks/cambw/benchmarks/cambw_v2_recheck_20260409_contentfix_mc4/data/part2_3_short.jsonl
 test_split: test
 doc_to_text: !function utils.doc_to_text
 doc_to_visual: !function utils.doc_to_visual
 doc_to_target: "answer"
 process_results: !function utils.process_results
 output_type: generate_until
-# lmms-eval standard config
 fewshot_split: null
 fewshot_config: null
 num_fewshot: 0
-# Metrics configuration
 metric_list:
   - metric: accuracy
     aggregation: !function utils.aggregate_accuracy
@@ -24,14 +22,13 @@ metric_list:
   - metric: mra
     aggregation: !function utils.aggregate_mra
     higher_is_better: true
-# Generation configuration
 generation_kwargs:
   max_new_tokens: 256
   temperature: 0.0
   top_p: 1.0
   num_beams: 1
   do_sample: false
-# Metadata
 metadata:
-  version: 1.0
+  version: 2.0
+  benchmark_version: cambw_v2_recheck_20260409_contentfix_mc4
   source: Cambrian-W Benchmark

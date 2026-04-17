@@ -1,8 +1,8 @@
 {
   "bench_version": "cambw_v2_recheck_20260409_contentfix_mc4",
-  "current_benchmark_dir": "lmms_eval/tasks/cambw/benchmarks/cambw_v2_recheck_20260409_localtest/source",
-  "part1_corrected_root": "/home/tione/notebook/tianjungu/datasets/ready4label_updates/new_long_video/corrected_json_3",
-  "part23_corrected_root": "/home/tione/notebook/tianjungu/datasets/ready4label_updates/top20merge_full/corrected_json_4",
+  "current_benchmark_dir": "lmms_eval/tasks/cambw/benchmarks/cambw_v2_recheck_20260409_contentfix_mc4/source",
+  "part1_corrected_root": "https://huggingface.co/datasets/Torwnexial/ready4label/resolve/main/new_long_video/corrected_json_3",
+  "part23_corrected_root": "https://huggingface.co/datasets/Torwnexial/ready4label/resolve/main/top20merge_full/corrected_json_4",
   "part1": {
     "num_docs": 511,
     "task_counts": {
@@ -17,38 +17,82 @@
     }
   },
   "part2": {
-    "num_docs": 3688,
+    "num_docs": 3458,
     "task_counts": {
-      "frame_recall_baseline": 1278,
-      "frame_recall_rotated": 1278,
-      "motion_direction": 1132
+      "frame_recall_baseline": 1185,
+      "frame_recall_rotated": 1185,
+      "motion_direction": 1088
     }
   },
   "part3": {
-    "num_docs": 7822,
+    "num_docs": 7591,
     "task_counts": {
-      "object_counting": 1098,
-      "first_appearance_recall_choice": 1675,
-      "first_appearance_recall_direct": 1675,
-      "last_appearance_recall_choice": 1687,
-      "last_appearance_recall_direct": 1687
+      "object_counting": 1067,
+      "first_appearance_recall_choice": 1625,
+      "first_appearance_recall_direct": 1625,
+      "last_appearance_recall_choice": 1637,
+      "last_appearance_recall_direct": 1637
     }
   },
   "part2_3": {
-    "num_docs": 11510,
+    "num_docs": 11049,
     "task_counts": {
-      "frame_recall_baseline": 1278,
-      "frame_recall_rotated": 1278,
-      "motion_direction": 1132,
-      "object_counting": 1098,
-      "first_appearance_recall_choice": 1675,
-      "first_appearance_recall_direct": 1675,
-      "last_appearance_recall_choice": 1687,
-      "last_appearance_recall_direct": 1687
+      "frame_recall_baseline": 1185,
+      "frame_recall_rotated": 1185,
+      "motion_direction": 1088,
+      "object_counting": 1067,
+      "first_appearance_recall_choice": 1625,
+      "first_appearance_recall_direct": 1625,
+      "last_appearance_recall_choice": 1637,
+      "last_appearance_recall_direct": 1637
     }
   },
   "part2_merge": {
-    "merged_duplicate_videos": 2,
-    "removed_duplicate_tasks": 7
+    "merged_duplicate_videos": 0,
+    "removed_duplicate_tasks": 0
+  },
+  "short_static_filter": {
+    "set_a_count": 7,
+    "set_b_count_after_subset_union": 34,
+    "set_a_missing_from_part2": [
+      "Vuze_Video_3YcnHObM0ls_left"
+    ],
+    "set_b_missing_from_part3": [
+      "2021Binghamton_Walk_92yKoJC3j1g_front",
+      "2021Binghamton_Walk_92yKoJC3j1g_right",
+      "2021Uva_Walk_l2iYDrsRe8c_front",
+      "BLACKSTONE_Video_-lg61evVFn4_back",
+      "BLACKSTONE_Video_-lg61evVFn4_right",
+      "Centrodens_Tour_vnqKvmJ9wBo_right",
+      "Factoryabove_Tour_u7wU1DTFH7w_back",
+      "Factoryabove_Tour_u7wU1DTFH7w_left",
+      "Factoryabove_Tour_u7wU1DTFH7w_right",
+      "Howcoca_Video_GvCFYjVFkk4_left",
+      "Maseratiproduction_Video_MJg5YR9klx4_back",
+      "TRAIN_Video_I_00MTHuXXE_back",
+      "TRAIN_Video_I_00MTHuXXE_left",
+      "TRAIN_Video_I_00MTHuXXE_right",
+      "Universityjordan_Tour_tsU0aHVg0O4_back",
+      "Universityjordan_Tour_tsU0aHVg0O4_left",
+      "Vuze_Video_3YcnHObM0ls_back",
+      "Vuze_Video_3YcnHObM0ls_front",
+      "Vuze_Video_3YcnHObM0ls_left",
+      "Vuze_Video_3YcnHObM0ls_right",
+      "Warehouseinspection_Video_fXCT_1R75kc_left",
+      "Wpmcnc1_Video_vyy5u-FtZIM_back",
+      "Wpmcnc1_Video_vyy5u-FtZIM_left"
+    ],
+    "part2_removed_task_instances": {
+      "frame_recall": 36,
+      "motion_direction": 12
+    },
+    "part3_removed_task_instances": {
+      "object_counting": 37,
+      "first_appearance_recall_choice": 50,
+      "first_appearance_recall_direct": 50,
+      "last_appearance_recall_choice": 50,
+      "last_appearance_recall_direct": 50
+    },
+    "backup_note": "Local backup paths are omitted from the release manifest."
   }
 }

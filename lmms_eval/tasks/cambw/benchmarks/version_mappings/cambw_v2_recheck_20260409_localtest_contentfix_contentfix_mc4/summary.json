@@ -1,0 +1,300 @@
+{
+  "versions": {
+    "oldest": "cambw_v2_recheck_20260409_localtest",
+    "firstfix": "cambw_v2_recheck_20260409_contentfix",
+    "final": "cambw_v2_recheck_20260409_contentfix_mc4"
+  },
+  "version_doc_counts": {
+    "oldest": 10091,
+    "firstfix": 10051,
+    "final": 11560
+  },
+  "pairwise": {
+    "oldest_to_firstfix": {
+      "left_version": "cambw_v2_recheck_20260409_localtest",
+      "right_version": "cambw_v2_recheck_20260409_contentfix",
+      "num_left": 10091,
+      "num_right": 10051,
+      "match_type_counts": {
+        "exact_same_docid": 9081,
+        "rewritten_docid": 958,
+        "dropped": 33,
+        "added": 12
+      },
+      "match_type_by_part_group": {
+        "part1": {
+          "exact_same_docid": 441,
+          "rewritten_docid": 6,
+          "dropped": 33
+        },
+        "part2_3": {
+          "exact_same_docid": 8640,
+          "rewritten_docid": 952,
+          "added": 12
+        }
+      },
+      "match_type_by_task_type": {
+        "first_appearance_recall_choice": {
+          "rewritten_docid": 476,
+          "exact_same_docid": 748,
+          "dropped": 5
+        },
+        "first_appearance_recall_direct": {
+          "exact_same_docid": 1224,
+          "dropped": 5
+        },
+        "frame_recall_baseline": {
+          "exact_same_docid": 1383,
+          "rewritten_docid": 6,
+          "dropped": 3,
+          "added": 6
+        },
+        "frame_recall_rotated": {
+          "exact_same_docid": 1383,
+          "rewritten_docid": 6,
+          "dropped": 3,
+          "added": 6
+        },
+        "last_appearance_recall_choice": {
+          "rewritten_docid": 470,
+          "exact_same_docid": 735,
+          "dropped": 5
+        },
+        "last_appearance_recall_direct": {
+          "exact_same_docid": 1205,
+          "dropped": 5
+        },
+        "motion_direction": {
+          "exact_same_docid": 1259,
+          "dropped": 2
+        },
+        "object_counting": {
+          "exact_same_docid": 1144,
+          "dropped": 5
+        }
+      }
+    },
+    "firstfix_to_final": {
+      "left_version": "cambw_v2_recheck_20260409_contentfix",
+      "right_version": "cambw_v2_recheck_20260409_contentfix_mc4",
+      "num_left": 10051,
+      "num_right": 11560,
+      "match_type_counts": {
+        "exact_same_docid": 5862,
+        "rewritten_docid": 1871,
+        "answer_changed_docid": 1917,
+        "dropped": 401,
+        "added": 1910
+      },
+      "match_type_by_part_group": {
+        "part1": {
+          "exact_same_docid": 419,
+          "rewritten_docid": 14,
+          "answer_changed_docid": 14,
+          "added": 64
+        },
+        "part2_3": {
+          "exact_same_docid": 5443,
+          "rewritten_docid": 1857,
+          "answer_changed_docid": 1903,
+          "dropped": 401,
+          "added": 1846
+        }
+      },
+      "match_type_by_task_type": {
+        "first_appearance_recall_choice": {
+          "rewritten_docid": 927,
+          "exact_same_docid": 262,
+          "dropped": 35,
+          "added": 462
+        },
+        "first_appearance_recall_direct": {
+          "answer_changed_docid": 927,
+          "exact_same_docid": 262,
+          "dropped": 35,
+          "added": 462
+        },
+        "frame_recall_baseline": {
+          "exact_same_docid": 1302,
+          "dropped": 93
+        },
+        "frame_recall_rotated": {
+          "exact_same_docid": 1302,
+          "dropped": 93
+        },
+        "last_appearance_recall_choice": {
+          "rewritten_docid": 944,
+          "exact_same_docid": 203,
+          "answer_changed_docid": 23,
+          "dropped": 35,
+          "added": 493
+        },
+        "last_appearance_recall_direct": {
+          "answer_changed_docid": 967,
+          "exact_same_docid": 203,
+          "dropped": 35,
+          "added": 493
+        },
+        "motion_direction": {
+          "exact_same_docid": 1215,
+          "dropped": 44
+        },
+        "object_counting": {
+          "exact_same_docid": 1113,
+          "dropped": 31
+        }
+      }
+    },
+    "oldest_to_final": {
+      "left_version": "cambw_v2_recheck_20260409_localtest",
+      "right_version": "cambw_v2_recheck_20260409_contentfix_mc4",
+      "num_left": 10091,
+      "num_right": 11560,
+      "match_type_counts": {
+        "exact_same_docid": 5838,
+        "rewritten_docid": 1883,
+        "answer_changed_docid": 1917,
+        "dropped": 434,
+        "added": 1922
+      },
+      "match_type_by_part_group": {
+        "part1": {
+          "exact_same_docid": 419,
+          "rewritten_docid": 14,
+          "answer_changed_docid": 14,
+          "dropped": 33,
+          "added": 64
+        },
+        "part2_3": {
+          "exact_same_docid": 5419,
+          "rewritten_docid": 1869,
+          "answer_changed_docid": 1903,
+          "dropped": 401,
+          "added": 1858
+        }
+      },
+      "match_type_by_task_type": {
+        "first_appearance_recall_choice": {
+          "rewritten_docid": 927,
+          "exact_same_docid": 262,
+          "dropped": 40,
+          "added": 462
+        },
+        "first_appearance_recall_direct": {
+          "answer_changed_docid": 927,
+          "exact_same_docid": 262,
+          "dropped": 40,
+          "added": 462
+        },
+        "frame_recall_baseline": {
+          "exact_same_docid": 1290,
+          "rewritten_docid": 6,
+          "dropped": 96,
+          "added": 6
+        },
+        "frame_recall_rotated": {
+          "exact_same_docid": 1290,
+          "rewritten_docid": 6,
+          "dropped": 96,
+          "added": 6
+        },
+        "last_appearance_recall_choice": {
+          "rewritten_docid": 944,
+          "exact_same_docid": 203,
+          "answer_changed_docid": 23,
+          "dropped": 40,
+          "added": 493
+        },
+        "last_appearance_recall_direct": {
+          "answer_changed_docid": 967,
+          "exact_same_docid": 203,
+          "dropped": 40,
+          "added": 493
+        },
+        "motion_direction": {
+          "exact_same_docid": 1215,
+          "dropped": 46
+        },
+        "object_counting": {
+          "exact_same_docid": 1113,
+          "dropped": 36
+        }
+      }
+    }
+  },
+  "three_way": {
+    "num_mapping_rows": 11994,
+    "presence_pattern_counts": {
+      "001": 1910,
+      "100": 33,
+      "111": 9638,
+      "110": 401,
+      "011": 12
+    },
+    "presence_pattern_by_part_group": {
+      "part1": {
+        "001": 64,
+        "100": 33,
+        "111": 447
+      },
+      "part2_3": {
+        "111": 9191,
+        "110": 401,
+        "001": 1846,
+        "011": 12
+      }
+    },
+    "presence_pattern_by_task_type": {
+      "first_appearance_recall_choice": {
+        "001": 462,
+        "100": 5,
+        "111": 1189,
+        "110": 35
+      },
+      "first_appearance_recall_direct": {
+        "001": 462,
+        "100": 5,
+        "111": 1189,
+        "110": 35
+      },
+      "frame_recall_baseline": {
+        "111": 1296,
+        "100": 3,
+        "110": 93,
+        "011": 6
+      },
+      "frame_recall_rotated": {
+        "111": 1296,
+        "100": 3,
+        "110": 93,
+        "011": 6
+      },
+      "last_appearance_recall_choice": {
+        "001": 493,
+        "100": 5,
+        "111": 1170,
+        "110": 35
+      },
+      "last_appearance_recall_direct": {
+        "001": 493,
+        "100": 5,
+        "111": 1170,
+        "110": 35
+      },
+      "motion_direction": {
+        "111": 1215,
+        "100": 2,
+        "110": 44
+      },
+      "object_counting": {
+        "111": 1113,
+        "100": 5,
+        "110": 31
+      }
+    },
+    "num_conflicts": 0,
+    "conflicts": [],
+    "num_chain_inconsistencies": 0,
+    "chain_inconsistencies": []
+  }
+}

@@ -1,0 +1,558 @@
+{
+  "snapshots": {
+    "v0_localtest": {
+      "label": "localtest",
+      "total": 10091,
+      "part_counts": {
+        "part1": 480,
+        "part2_3": 9611
+      },
+      "task_counts": {
+        "object_counting": 1149,
+        "frame_recall_baseline": 1398,
+        "frame_recall_rotated": 1398,
+        "motion_direction": 1268,
+        "first_appearance_recall_choice": 1229,
+        "first_appearance_recall_direct": 1229,
+        "last_appearance_recall_choice": 1210,
+        "last_appearance_recall_direct": 1210
+      }
+    },
+    "v1_contentfix": {
+      "label": "contentfix",
+      "total": 10051,
+      "part_counts": {
+        "part1": 447,
+        "part2_3": 9604
+      },
+      "task_counts": {
+        "object_counting": 1144,
+        "frame_recall_baseline": 1395,
+        "frame_recall_rotated": 1395,
+        "motion_direction": 1259,
+        "first_appearance_recall_choice": 1224,
+        "first_appearance_recall_direct": 1224,
+        "last_appearance_recall_choice": 1205,
+        "last_appearance_recall_direct": 1205
+      }
+    },
+    "v2_mc4_pre_q4": {
+      "label": "mc4_pre_q4",
+      "total": 12021,
+      "part_counts": {
+        "part1": 511,
+        "part2_3": 11510
+      },
+      "task_counts": {
+        "object_counting": 1144,
+        "frame_recall_baseline": 1395,
+        "frame_recall_rotated": 1395,
+        "motion_direction": 1259,
+        "first_appearance_recall_choice": 1701,
+        "first_appearance_recall_direct": 1701,
+        "last_appearance_recall_choice": 1713,
+        "last_appearance_recall_direct": 1713
+      }
+    },
+    "v3_mc4_pre_static": {
+      "label": "mc4_pre_static",
+      "total": 11839,
+      "part_counts": {
+        "part1": 511,
+        "part2_3": 11328
+      },
+      "task_counts": {
+        "object_counting": 1144,
+        "frame_recall_baseline": 1320,
+        "frame_recall_rotated": 1320,
+        "motion_direction": 1227,
+        "first_appearance_recall_choice": 1701,
+        "first_appearance_recall_direct": 1701,
+        "last_appearance_recall_choice": 1713,
+        "last_appearance_recall_direct": 1713
+      }
+    },
+    "v4_final_static": {
+      "label": "final_static",
+      "total": 11560,
+      "part_counts": {
+        "part1": 511,
+        "part2_3": 11049
+      },
+      "task_counts": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 1651,
+        "first_appearance_recall_direct": 1651,
+        "last_appearance_recall_choice": 1663,
+        "last_appearance_recall_direct": 1663
+      }
+    }
+  },
+  "transitions": {
+    "v0_localtest_to_v1_contentfix": {
+      "reusable_eval_count": 9105,
+      "exact_docuid_count": 9105,
+      "rescore_only_count": 0,
+      "must_rerun_count": 946,
+      "reusable_by_task": {
+        "object_counting": 1144,
+        "frame_recall_baseline": 1395,
+        "frame_recall_rotated": 1395,
+        "motion_direction": 1259,
+        "first_appearance_recall_choice": 748,
+        "first_appearance_recall_direct": 1224,
+        "last_appearance_recall_choice": 735,
+        "last_appearance_recall_direct": 1205
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1144,
+        "frame_recall_baseline": 1395,
+        "frame_recall_rotated": 1395,
+        "motion_direction": 1259,
+        "first_appearance_recall_choice": 748,
+        "first_appearance_recall_direct": 1224,
+        "last_appearance_recall_choice": 735,
+        "last_appearance_recall_direct": 1205
+      },
+      "must_rerun_by_task": {
+        "first_appearance_recall_choice": 476,
+        "last_appearance_recall_choice": 470
+      },
+      "task_net_delta": {
+        "first_appearance_recall_choice": -5,
+        "first_appearance_recall_direct": -5,
+        "frame_recall_baseline": -3,
+        "frame_recall_rotated": -3,
+        "last_appearance_recall_choice": -5,
+        "last_appearance_recall_direct": -5,
+        "motion_direction": -9,
+        "object_counting": -5
+      }
+    },
+    "v1_contentfix_to_v2_mc4_pre_q4": {
+      "reusable_eval_count": 8114,
+      "exact_docuid_count": 6134,
+      "rescore_only_count": 1980,
+      "must_rerun_count": 3907,
+      "reusable_by_task": {
+        "object_counting": 1139,
+        "frame_recall_baseline": 1395,
+        "frame_recall_rotated": 1395,
+        "motion_direction": 1259,
+        "first_appearance_recall_choice": 267,
+        "first_appearance_recall_direct": 1224,
+        "last_appearance_recall_direct": 1205,
+        "last_appearance_recall_choice": 230
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1139,
+        "frame_recall_baseline": 1395,
+        "frame_recall_rotated": 1395,
+        "motion_direction": 1259,
+        "first_appearance_recall_choice": 267,
+        "first_appearance_recall_direct": 267,
+        "last_appearance_recall_choice": 206,
+        "last_appearance_recall_direct": 206
+      },
+      "must_rerun_by_task": {
+        "object_counting": 5,
+        "first_appearance_recall_choice": 1434,
+        "first_appearance_recall_direct": 477,
+        "last_appearance_recall_choice": 1483,
+        "last_appearance_recall_direct": 508
+      },
+      "task_net_delta": {
+        "first_appearance_recall_choice": 477,
+        "first_appearance_recall_direct": 477,
+        "frame_recall_baseline": 0,
+        "frame_recall_rotated": 0,
+        "last_appearance_recall_choice": 508,
+        "last_appearance_recall_direct": 508,
+        "motion_direction": 0,
+        "object_counting": 0
+      }
+    },
+    "v2_mc4_pre_q4_to_v3_mc4_pre_static": {
+      "reusable_eval_count": 11839,
+      "exact_docuid_count": 11839,
+      "rescore_only_count": 0,
+      "must_rerun_count": 0,
+      "reusable_by_task": {
+        "object_counting": 1144,
+        "frame_recall_baseline": 1320,
+        "frame_recall_rotated": 1320,
+        "motion_direction": 1227,
+        "first_appearance_recall_choice": 1701,
+        "first_appearance_recall_direct": 1701,
+        "last_appearance_recall_choice": 1713,
+        "last_appearance_recall_direct": 1713
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1144,
+        "frame_recall_baseline": 1320,
+        "frame_recall_rotated": 1320,
+        "motion_direction": 1227,
+        "first_appearance_recall_choice": 1701,
+        "first_appearance_recall_direct": 1701,
+        "last_appearance_recall_choice": 1713,
+        "last_appearance_recall_direct": 1713
+      },
+      "must_rerun_by_task": {},
+      "task_net_delta": {
+        "first_appearance_recall_choice": 0,
+        "first_appearance_recall_direct": 0,
+        "frame_recall_baseline": -75,
+        "frame_recall_rotated": -75,
+        "last_appearance_recall_choice": 0,
+        "last_appearance_recall_direct": 0,
+        "motion_direction": -32,
+        "object_counting": 0
+      }
+    },
+    "v3_mc4_pre_static_to_v4_final_static": {
+      "reusable_eval_count": 11519,
+      "exact_docuid_count": 11519,
+      "rescore_only_count": 0,
+      "must_rerun_count": 41,
+      "reusable_by_task": {
+        "object_counting": 1108,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 1642,
+        "first_appearance_recall_direct": 1642,
+        "last_appearance_recall_choice": 1654,
+        "last_appearance_recall_direct": 1654
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1108,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 1642,
+        "first_appearance_recall_direct": 1642,
+        "last_appearance_recall_choice": 1654,
+        "last_appearance_recall_direct": 1654
+      },
+      "must_rerun_by_task": {
+        "object_counting": 5,
+        "first_appearance_recall_choice": 9,
+        "first_appearance_recall_direct": 9,
+        "last_appearance_recall_choice": 9,
+        "last_appearance_recall_direct": 9
+      },
+      "task_net_delta": {
+        "first_appearance_recall_choice": -50,
+        "first_appearance_recall_direct": -50,
+        "frame_recall_baseline": -18,
+        "frame_recall_rotated": -18,
+        "last_appearance_recall_choice": -50,
+        "last_appearance_recall_direct": -50,
+        "motion_direction": -12,
+        "object_counting": -31
+      }
+    },
+    "v2_mc4_pre_q4_to_v4_final_static": {
+      "reusable_eval_count": 11519,
+      "exact_docuid_count": 11519,
+      "rescore_only_count": 0,
+      "must_rerun_count": 41,
+      "reusable_by_task": {
+        "object_counting": 1108,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 1642,
+        "first_appearance_recall_direct": 1642,
+        "last_appearance_recall_choice": 1654,
+        "last_appearance_recall_direct": 1654
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1108,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 1642,
+        "first_appearance_recall_direct": 1642,
+        "last_appearance_recall_choice": 1654,
+        "last_appearance_recall_direct": 1654
+      },
+      "must_rerun_by_task": {
+        "object_counting": 5,
+        "first_appearance_recall_choice": 9,
+        "first_appearance_recall_direct": 9,
+        "last_appearance_recall_choice": 9,
+        "last_appearance_recall_direct": 9
+      },
+      "task_net_delta": {
+        "first_appearance_recall_choice": -50,
+        "first_appearance_recall_direct": -50,
+        "frame_recall_baseline": -93,
+        "frame_recall_rotated": -93,
+        "last_appearance_recall_choice": -50,
+        "last_appearance_recall_direct": -50,
+        "motion_direction": -44,
+        "object_counting": -31
+      }
+    },
+    "v1_contentfix_to_v4_final_static": {
+      "reusable_eval_count": 7779,
+      "exact_docuid_count": 5862,
+      "rescore_only_count": 1917,
+      "must_rerun_count": 3781,
+      "reusable_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 1189,
+        "last_appearance_recall_direct": 1170,
+        "last_appearance_recall_choice": 226
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 262,
+        "last_appearance_recall_choice": 203,
+        "last_appearance_recall_direct": 203
+      },
+      "must_rerun_by_task": {
+        "first_appearance_recall_choice": 1389,
+        "first_appearance_recall_direct": 462,
+        "last_appearance_recall_choice": 1437,
+        "last_appearance_recall_direct": 493
+      },
+      "task_net_delta": {
+        "first_appearance_recall_choice": 427,
+        "first_appearance_recall_direct": 427,
+        "frame_recall_baseline": -93,
+        "frame_recall_rotated": -93,
+        "last_appearance_recall_choice": 458,
+        "last_appearance_recall_direct": 458,
+        "motion_direction": -44,
+        "object_counting": -31
+      }
+    },
+    "v0_localtest_to_v4_final_static": {
+      "reusable_eval_count": 7779,
+      "exact_docuid_count": 5862,
+      "rescore_only_count": 1917,
+      "must_rerun_count": 3781,
+      "reusable_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 1189,
+        "last_appearance_recall_direct": 1170,
+        "last_appearance_recall_choice": 226
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 262,
+        "last_appearance_recall_choice": 203,
+        "last_appearance_recall_direct": 203
+      },
+      "must_rerun_by_task": {
+        "first_appearance_recall_choice": 1389,
+        "first_appearance_recall_direct": 462,
+        "last_appearance_recall_choice": 1437,
+        "last_appearance_recall_direct": 493
+      },
+      "task_net_delta": {
+        "first_appearance_recall_choice": 422,
+        "first_appearance_recall_direct": 422,
+        "frame_recall_baseline": -96,
+        "frame_recall_rotated": -96,
+        "last_appearance_recall_choice": 453,
+        "last_appearance_recall_direct": 453,
+        "motion_direction": -53,
+        "object_counting": -36
+      }
+    }
+  },
+  "reuse_to_final": {
+    "v0_localtest": {
+      "reusable_eval_count": 7779,
+      "exact_docuid_count": 5862,
+      "rescore_only_count": 1917,
+      "must_rerun_count": 3781,
+      "reusable_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 1189,
+        "last_appearance_recall_direct": 1170,
+        "last_appearance_recall_choice": 226
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 262,
+        "last_appearance_recall_choice": 203,
+        "last_appearance_recall_direct": 203
+      },
+      "must_rerun_by_task": {
+        "first_appearance_recall_choice": 1389,
+        "first_appearance_recall_direct": 462,
+        "last_appearance_recall_choice": 1437,
+        "last_appearance_recall_direct": 493
+      },
+      "task_net_delta": {
+        "first_appearance_recall_choice": 422,
+        "first_appearance_recall_direct": 422,
+        "frame_recall_baseline": -96,
+        "frame_recall_rotated": -96,
+        "last_appearance_recall_choice": 453,
+        "last_appearance_recall_direct": 453,
+        "motion_direction": -53,
+        "object_counting": -36
+      }
+    },
+    "v1_contentfix": {
+      "reusable_eval_count": 7779,
+      "exact_docuid_count": 5862,
+      "rescore_only_count": 1917,
+      "must_rerun_count": 3781,
+      "reusable_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 1189,
+        "last_appearance_recall_direct": 1170,
+        "last_appearance_recall_choice": 226
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 262,
+        "last_appearance_recall_choice": 203,
+        "last_appearance_recall_direct": 203
+      },
+      "must_rerun_by_task": {
+        "first_appearance_recall_choice": 1389,
+        "first_appearance_recall_direct": 462,
+        "last_appearance_recall_choice": 1437,
+        "last_appearance_recall_direct": 493
+      },
+      "task_net_delta": {
+        "first_appearance_recall_choice": 427,
+        "first_appearance_recall_direct": 427,
+        "frame_recall_baseline": -93,
+        "frame_recall_rotated": -93,
+        "last_appearance_recall_choice": 458,
+        "last_appearance_recall_direct": 458,
+        "motion_direction": -44,
+        "object_counting": -31
+      }
+    },
+    "v2_mc4_pre_q4": {
+      "reusable_eval_count": 11519,
+      "exact_docuid_count": 11519,
+      "rescore_only_count": 0,
+      "must_rerun_count": 41,
+      "reusable_by_task": {
+        "object_counting": 1108,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 1642,
+        "first_appearance_recall_direct": 1642,
+        "last_appearance_recall_choice": 1654,
+        "last_appearance_recall_direct": 1654
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1108,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 1642,
+        "first_appearance_recall_direct": 1642,
+        "last_appearance_recall_choice": 1654,
+        "last_appearance_recall_direct": 1654
+      },
+      "must_rerun_by_task": {
+        "object_counting": 5,
+        "first_appearance_recall_choice": 9,
+        "first_appearance_recall_direct": 9,
+        "last_appearance_recall_choice": 9,
+        "last_appearance_recall_direct": 9
+      },
+      "task_net_delta": {
+        "first_appearance_recall_choice": -50,
+        "first_appearance_recall_direct": -50,
+        "frame_recall_baseline": -93,
+        "frame_recall_rotated": -93,
+        "last_appearance_recall_choice": -50,
+        "last_appearance_recall_direct": -50,
+        "motion_direction": -44,
+        "object_counting": -31
+      }
+    },
+    "v3_mc4_pre_static": {
+      "reusable_eval_count": 11519,
+      "exact_docuid_count": 11519,
+      "rescore_only_count": 0,
+      "must_rerun_count": 41,
+      "reusable_by_task": {
+        "object_counting": 1108,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 1642,
+        "first_appearance_recall_direct": 1642,
+        "last_appearance_recall_choice": 1654,
+        "last_appearance_recall_direct": 1654
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1108,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 1642,
+        "first_appearance_recall_direct": 1642,
+        "last_appearance_recall_choice": 1654,
+        "last_appearance_recall_direct": 1654
+      },
+      "must_rerun_by_task": {
+        "object_counting": 5,
+        "first_appearance_recall_choice": 9,
+        "first_appearance_recall_direct": 9,
+        "last_appearance_recall_choice": 9,
+        "last_appearance_recall_direct": 9
+      },
+      "task_net_delta": {
+        "first_appearance_recall_choice": -50,
+        "first_appearance_recall_direct": -50,
+        "frame_recall_baseline": -18,
+        "frame_recall_rotated": -18,
+        "last_appearance_recall_choice": -50,
+        "last_appearance_recall_direct": -50,
+        "motion_direction": -12,
+        "object_counting": -31
+      }
+    }
+  }
+}

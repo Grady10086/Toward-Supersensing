@@ -28,6 +28,23 @@ FRAME_RECALL_LABELS = ("A", "B", "C", "D")
 DEFAULT_VIDEO_PROTOCOL = "full_fps1"
 DEFAULT_VIDEO_FPS = 1.0
 DEFAULT_VIDEO_MAX_FRAMES = 128
+CAMBW_VIDEO_ROOT_ENV = "CAMBW_VIDEO_ROOT"
+LEGACY_DATA_PREFIXES = (
+    "/lustre/fs12/portfolios/nvr/projects/nvr_av_end2endav/users/ymingli/projects/xty/cambw/data",
+    "/lustre/fsw/portfolios/nvr/users/ymingli/projects/xty/cambw/data",
+    "/data",
+    "/path/to/data",
+)
+SOURCE_FOLDER_TO_DATA_SUBDIRS = {
+    "new_long_video/corrected_json_2": ("long_video_persp", "new_long_video_persp"),
+    "new_long_video/corrected_json_3": ("long_video_persp", "new_long_video_persp"),
+    "top20merge/corrected_json": ("top20merge_0207_persp",),
+    "long_video/corrected_json_2": ("long_video_persp",),
+    "long_video/corrected_json_3": ("long_video_persp",),
+    "top20merge_full/corrected_json_2": ("top20merge_0207_persp",),
+    "top20merge_full/corrected_json_3": ("top20merge_0207_persp",),
+    "top20merge_full/corrected_json_4": ("top20merge_0207_persp",),
+}
 
 
 def _resolve_video_protocol() -> tuple[str, float | None, int | None]:
@@ -97,6 +114,81 @@ def _normalize_frame_indices(frame_indices: Any) -> Tuple[int, ...]:
         except (TypeError, ValueError):
             continue
     return tuple(normalized)
+
+
+def _resolve_video_root() -> str | None:
+    root = os.getenv(CAMBW_VIDEO_ROOT_ENV)
+    if not root:
+        return None
+    return os.path.abspath(os.path.expanduser(root))
+
+
+def _rebase_or_validate_video_path(video_path: Any, video_root: str | None) -> str | None:
+    if not video_path:
+        return None
+    raw = str(video_path).strip()
+    if not raw:
+        return None
+    if os.path.exists(raw):
+        return raw
+    if os.path.isabs(raw):
+        if video_root:
+            for old_prefix in LEGACY_DATA_PREFIXES:
+                if raw.startswith(old_prefix):
+                    candidate = os.path.join(video_root, raw[len(old_prefix) :].lstrip('/'))
+                    if os.path.exists(candidate):
+                        return candidate
+        return raw
+    if not video_root:
+        return None
+    candidate = os.path.join(video_root, raw)
+    if os.path.exists(candidate):
+        return candidate
+    return candidate
+
+
+def _resolve_video_path_from_source_folder(video_name: Any, source_folder: Any, video_root: str | None) -> str | None:
+    if not video_root or not video_name or not source_folder:
+        return None
+    subdirs = SOURCE_FOLDER_TO_DATA_SUBDIRS.get(str(source_folder))
+    if not subdirs:
+        return None
+    base = str(video_name)
+    if not base.endswith('.mp4'):
+        base = f'{base}.mp4'
+    candidates = [os.path.join(video_root, subdir, base) for subdir in subdirs]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+    return candidates[0] if candidates else None
+
+
+def resolve_doc_video_path(doc: Dict[str, Any]) -> str:
+    video_root = _resolve_video_root()
+    direct_path = _rebase_or_validate_video_path(doc.get('video_path'), video_root)
+    if direct_path and os.path.exists(direct_path):
+        return direct_path
+
+    fallback = _resolve_video_path_from_source_folder(doc.get('video_name'), doc.get('source_folder'), video_root)
+    if fallback and os.path.exists(fallback):
+        return fallback
+
+    video_name = doc.get('video_name') or '<missing video_name>'
+    source_folder = doc.get('source_folder') or '<missing source_folder>'
+    if direct_path and not os.path.exists(direct_path):
+        raise FileNotFoundError(
+            f'Cambrian-W video path does not exist: {direct_path}. '
+            f'video_name={video_name} source_folder={source_folder}'
+        )
+    if fallback and not os.path.exists(fallback):
+        raise FileNotFoundError(
+            f'Cambrian-W could not find video under {CAMBW_VIDEO_ROOT_ENV}={video_root}: {fallback}. '
+            f'video_name={video_name} source_folder={source_folder}'
+        )
+    raise RuntimeError(
+        f'Cambrian-W cannot resolve video for video_name={video_name} source_folder={source_folder}. '
+        f'Set {CAMBW_VIDEO_ROOT_ENV} to the dataset root containing long_video_persp/top20merge_0207_persp.'
+    )
 
 
 @lru_cache(maxsize=256)
@@ -286,12 +378,9 @@ def doc_to_visual(doc: Dict[str, Any]) -> List[Any]:
     - frame_recall tasks: fps=1 video context + checkpoint frames as extra images
     - other tasks: full video path
     """
-    video_path = doc.get("video_path")
+    video_path = resolve_doc_video_path(doc)
     task_type = (doc.get("task_type") or "").lower()
     frame_indices = _normalize_frame_indices(doc.get("frame_indices"))
-
-    if not video_path:
-        return []
 
     if "frame_recall" in task_type and frame_indices:
         payloads = [_build_video_context_payload(video_path)]

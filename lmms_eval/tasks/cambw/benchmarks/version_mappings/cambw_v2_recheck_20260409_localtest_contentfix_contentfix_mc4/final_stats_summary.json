@@ -1,0 +1,190 @@
+{
+  "versions": {
+    "oldest": "cambw_v2_recheck_20260409_localtest",
+    "firstfix": "cambw_v2_recheck_20260409_contentfix",
+    "final": "cambw_v2_recheck_20260409_contentfix_mc4"
+  },
+  "effective_qa_counts": {
+    "oldest": {
+      "total": 10091,
+      "part_counts": {
+        "part1": 480,
+        "part2_3": 9611
+      },
+      "task_counts": {
+        "object_counting": 1149,
+        "frame_recall_baseline": 1398,
+        "frame_recall_rotated": 1398,
+        "motion_direction": 1268,
+        "first_appearance_recall_choice": 1229,
+        "first_appearance_recall_direct": 1229,
+        "last_appearance_recall_choice": 1210,
+        "last_appearance_recall_direct": 1210
+      }
+    },
+    "firstfix": {
+      "total": 10051,
+      "part_counts": {
+        "part1": 447,
+        "part2_3": 9604
+      },
+      "task_counts": {
+        "object_counting": 1144,
+        "frame_recall_baseline": 1395,
+        "frame_recall_rotated": 1395,
+        "motion_direction": 1259,
+        "first_appearance_recall_choice": 1224,
+        "first_appearance_recall_direct": 1224,
+        "last_appearance_recall_choice": 1205,
+        "last_appearance_recall_direct": 1205
+      }
+    },
+    "final": {
+      "total": 11560,
+      "part_counts": {
+        "part1": 511,
+        "part2_3": 11049
+      },
+      "task_counts": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 1651,
+        "first_appearance_recall_direct": 1651,
+        "last_appearance_recall_choice": 1663,
+        "last_appearance_recall_direct": 1663
+      }
+    }
+  },
+  "reuse_to_final": {
+    "oldest": {
+      "reusable_eval_count": 7779,
+      "must_rerun_count": 3781,
+      "exact_docuid_count": 5862,
+      "rescore_only_count": 1917,
+      "reusable_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 1189,
+        "last_appearance_recall_direct": 1170,
+        "last_appearance_recall_choice": 226
+      },
+      "must_rerun_by_task": {
+        "first_appearance_recall_choice": 1389,
+        "first_appearance_recall_direct": 462,
+        "last_appearance_recall_choice": 1437,
+        "last_appearance_recall_direct": 493
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 262,
+        "last_appearance_recall_choice": 203,
+        "last_appearance_recall_direct": 203
+      }
+    },
+    "firstfix": {
+      "reusable_eval_count": 7779,
+      "must_rerun_count": 3781,
+      "exact_docuid_count": 5862,
+      "rescore_only_count": 1917,
+      "reusable_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 1189,
+        "last_appearance_recall_direct": 1170,
+        "last_appearance_recall_choice": 226
+      },
+      "must_rerun_by_task": {
+        "first_appearance_recall_choice": 1389,
+        "first_appearance_recall_direct": 462,
+        "last_appearance_recall_choice": 1437,
+        "last_appearance_recall_direct": 493
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 262,
+        "last_appearance_recall_choice": 203,
+        "last_appearance_recall_direct": 203
+      }
+    },
+    "union_oldest_firstfix": {
+      "reusable_eval_count": 7779,
+      "must_rerun_count": 3781,
+      "exact_docuid_count": 5862,
+      "rescore_only_count": 1917,
+      "reusable_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 1189,
+        "last_appearance_recall_direct": 1170,
+        "last_appearance_recall_choice": 226
+      },
+      "must_rerun_by_task": {
+        "first_appearance_recall_choice": 1389,
+        "first_appearance_recall_direct": 462,
+        "last_appearance_recall_choice": 1437,
+        "last_appearance_recall_direct": 493
+      },
+      "exact_docuid_by_task": {
+        "object_counting": 1113,
+        "frame_recall_baseline": 1302,
+        "frame_recall_rotated": 1302,
+        "motion_direction": 1215,
+        "first_appearance_recall_choice": 262,
+        "first_appearance_recall_direct": 262,
+        "last_appearance_recall_choice": 203,
+        "last_appearance_recall_direct": 203
+      }
+    }
+  },
+  "task_net_deltas": {
+    "oldest_to_firstfix": {
+      "first_appearance_recall_choice": -5,
+      "first_appearance_recall_direct": -5,
+      "frame_recall_baseline": -3,
+      "frame_recall_rotated": -3,
+      "last_appearance_recall_choice": -5,
+      "last_appearance_recall_direct": -5,
+      "motion_direction": -9,
+      "object_counting": -5
+    },
+    "firstfix_to_final": {
+      "first_appearance_recall_choice": 427,
+      "first_appearance_recall_direct": 427,
+      "frame_recall_baseline": -93,
+      "frame_recall_rotated": -93,
+      "last_appearance_recall_choice": 458,
+      "last_appearance_recall_direct": 458,
+      "motion_direction": -44,
+      "object_counting": -31
+    },
+    "oldest_to_final": {
+      "first_appearance_recall_choice": 422,
+      "first_appearance_recall_direct": 422,
+      "frame_recall_baseline": -96,
+      "frame_recall_rotated": -96,
+      "last_appearance_recall_choice": 453,
+      "last_appearance_recall_direct": 453,
+      "motion_direction": -53,
+      "object_counting": -36
+    }
+  }
+}

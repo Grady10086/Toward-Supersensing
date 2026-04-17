@@ -18,10 +18,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from huggingface_hub import hf_hub_download
+from huggingface_hub import hf_hub_download, list_repo_files
 
 from lmms_eval.tasks.cambw.identity import compute_doc_uid, compute_eval_uid
-
 DEFAULT_OUT_ROOT = REPO_ROOT / "lmms_eval" / "tasks" / "cambw" / "benchmarks"
 DEFAULT_PART1_CORRECTED = "https://huggingface.co/datasets/Torwnexial/ready4label/resolve/main/new_long_video/corrected_json_3"
 DEFAULT_PART23_CORRECTED = "https://huggingface.co/datasets/Torwnexial/ready4label/resolve/main/top20merge_full/corrected_json_4"
@@ -29,6 +28,66 @@ PART1_FILE = "part1_long_videos_-_dual_format_appearance.json"
 PART2_FILE = "part2_short_videos_-_place_&_motion.json"
 PART3_FILE = "part3_short_videos_-_objects_with_dual_format.json"
 HF_DATASET_PREFIX = "https://huggingface.co/datasets/Torwnexial/ready4label/resolve/main/"
+
+SET_A_STATIC_SHORT_VIDEOS = {
+    "Vuze_Video_3YcnHObM0ls_front",
+    "Vuze_Video_3YcnHObM0ls_back",
+    "Vuze_Video_3YcnHObM0ls_left",
+    "Vuze_Video_3YcnHObM0ls_right",
+    "TRAIN_Video_I_00MTHuXXE_back",
+    "TRAIN_Video_I_00MTHuXXE_left",
+    "TRAIN_Video_I_00MTHuXXE_right",
+}
+
+SET_B_STATIC_SHORT_VIDEOS = {
+    "Factoryabove_Tour_u7wU1DTFH7w_back",
+    "Vuze_Video_3YcnHObM0ls_back",
+    "Factoryabove_Tour_u7wU1DTFH7w_right",
+    "2021Uva_Walk_l2iYDrsRe8c_back",
+    "heathrow_airport_terminal_zuSQHzUWDR4_left",
+    "TRAIN_Video_I_00MTHuXXE_back",
+    "Daibi_Video_BKTtItk05pw_left",
+    "Centrodens_Tour_vnqKvmJ9wBo_right",
+    "Wpmcnc1_Video_vyy5u-FtZIM_left",
+    "Vuze_Video_3YcnHObM0ls_front",
+    "BLACKSTONE_Video_-lg61evVFn4_back",
+    "Universityjordan_Tour_tsU0aHVg0O4_back",
+    "Centrodens_Tour_wOrf7RVzSg0_left",
+    "2021Binghamton_Walk_92yKoJC3j1g_right",
+    "NYCRide_juy5LprSzL4_right",
+    "Residential_Video_RJW7wK5oD_k_right",
+    "Universityjordan_Tour_tsU0aHVg0O4_left",
+    "2021Uva_Walk_l2iYDrsRe8c_front",
+    "BLACKSTONE_Video_-lg61evVFn4_right",
+    "2021Binghamton_Walk_92yKoJC3j1g_front",
+    "8k_360_groceries_18pVuTWiTAc_back",
+    "4k360_hmart_arcadia_H9I7XEQOF0w_front",
+    "Howcoca_Video_GvCFYjVFkk4_left",
+    "Takemythbusters_Tour_jBCs10yczfY_back",
+    "Vuze_Video_3YcnHObM0ls_left",
+    "Factoryabove_Tour_u7wU1DTFH7w_left",
+    "Maseratiproduction_Video_MJg5YR9klx4_back",
+    "Vuze_Video_3YcnHObM0ls_right",
+    "Wpmcnc1_Video_vyy5u-FtZIM_front",
+    "TRAIN_Video_I_00MTHuXXE_right",
+    "Daibi_Video_BKTtItk05pw_back",
+    "Warehouseinspection_Video_fXCT_1R75kc_left",
+    "Wpmcnc1_Video_vyy5u-FtZIM_back",
+}
+
+SET_B_STATIC_SHORT_VIDEOS |= SET_A_STATIC_SHORT_VIDEOS
+
+SHORT_STATIC_DROP_PART2_TASK_TYPES = {"frame_recall", "motion_direction"}
+SHORT_STATIC_DROP_PART3_TASK_TYPES = {
+    "object_counting",
+    "first_appearance_recall_choice",
+    "first_appearance_recall_direct",
+    "last_appearance_recall_choice",
+    "last_appearance_recall_direct",
+}
+
+if not SET_A_STATIC_SHORT_VIDEOS.issubset(SET_B_STATIC_SHORT_VIDEOS):
+    raise ValueError("Set A must be a subset of Set B for short-video static filtering")
 
 
 def load_json(path: Path) -> Dict[str, Any]:
@@ -111,6 +170,22 @@ def try_load_corrected_json(source_roots: List[str], source_labels: List[str], v
         return load_corrected_json(source_roots, source_labels, video_name, cache_dir)
     except Exception:
         return None
+
+
+def list_available_json_video_names(source_root: str) -> set[str] | None:
+    local_root = Path(source_root)
+    if local_root.exists():
+        return {path.stem for path in local_root.glob("*.json")}
+    if source_root.startswith(HF_DATASET_PREFIX):
+        relative_dir = source_root[len(HF_DATASET_PREFIX) :].strip("/")
+        prefix = f"{relative_dir}/"
+        files = list_repo_files("Torwnexial/ready4label", repo_type="dataset")
+        return {
+            Path(path).stem
+            for path in files
+            if path.startswith(prefix) and path.endswith(".json")
+        }
+    return None
 
 
 def swap_left_right(video_name: str) -> str:
@@ -252,7 +327,10 @@ def compute_global_appearance_order(raw: Dict[str, Any], subset_concepts: List[s
     if is_first:
         clip_pos = {concept: first_seen_clip(counts) for concept, counts in counts_by_concept.items()}
     else:
-        clip_pos = {concept: last_seen_clip_up_to(counts, max(counts) if counts else -1) for concept, counts in counts_by_concept.items()}
+        clip_pos = {
+            concept: last_seen_clip_up_to(counts, max(counts) if counts else -1)
+            for concept, counts in counts_by_concept.items()
+        }
 
     ordered = [concept for concept in raw_order if concept in subset_concepts]
     remaining = [concept for concept in subset_concepts if concept not in ordered]
@@ -298,7 +376,11 @@ def patch_appearance_task(task: Dict[str, Any], raw: Dict[str, Any], video_name:
 
     for checkpoint in task.get("checkpoints") or []:
         clip_idx = int(checkpoint.get("clip_idx", 0))
-        seen, checkpoint_order = compute_first_order(raw, subset_concepts, clip_idx) if is_first else compute_last_order(raw, subset_concepts, clip_idx)
+        seen, checkpoint_order = (
+            compute_first_order(raw, subset_concepts, clip_idx)
+            if is_first
+            else compute_last_order(raw, subset_concepts, clip_idx)
+        )
         actual_order = global_order
         checkpoint["concepts_seen"] = seen
         checkpoint["correct_order"] = actual_order
@@ -319,7 +401,8 @@ def patch_appearance_task(task: Dict[str, Any], raw: Dict[str, Any], video_name:
             if (
                 len(normalized_options) == 4
                 and all(len(option) == len(actual_order) for option in normalized_options)
-                and actual_order in normalized_options
+                and
+                actual_order in normalized_options
                 and len(normalized_text) == len(set(normalized_text))
                 and normalized_text.count(correct_text) == 1
             ):
@@ -365,6 +448,47 @@ def merge_duplicate_videos(data: Dict[str, Any]) -> Tuple[Dict[str, Any], int, i
             seen.add(signature)
     out["videos"] = merged_videos
     return out, duplicate_videos, duplicate_tasks
+
+
+def patch_part2(data: Dict[str, Any], part2_root: str, cache_dir: Path) -> Dict[str, Any]:
+    out = copy.deepcopy(data)
+    resolved_label = "top20merge_full/corrected_json_4"
+    available_videos = list_available_json_video_names(part2_root)
+    kept_videos = []
+    dropped_videos = []
+    pruned_videos = []
+    removed_task_counts: Dict[str, int] = {}
+    for video in out.get("videos") or []:
+        video_name = video.get("video_name", "")
+        if available_videos is not None and video_name not in available_videos:
+            dropped_videos.append(video_name)
+            continue
+        video["source_folder"] = resolved_label
+        kept_tasks = []
+        removed_here = []
+        for task in video.get("tasks") or []:
+            task["source_folder"] = resolved_label
+            task_type = str(task.get("task_type") or "")
+            if video_name in SET_A_STATIC_SHORT_VIDEOS and task_type in SHORT_STATIC_DROP_PART2_TASK_TYPES:
+                removed_here.append(task_type)
+                removed_task_counts[task_type] = removed_task_counts.get(task_type, 0) + 1
+                continue
+            kept_tasks.append(task)
+        video["tasks"] = kept_tasks
+        if removed_here:
+            pruned_videos.append({"video_name": video_name, "removed_task_types": removed_here})
+        if kept_tasks:
+            kept_videos.append(video)
+    out["videos"] = kept_videos
+    meta = out.setdefault("metadata", {})
+    meta["version"] = "2.1"
+    meta["source_override"] = "top20merge_full/corrected_json_4"
+    meta["dropped_videos_missing_source"] = dropped_videos
+    meta["static_filter_set_a_videos"] = sorted(SET_A_STATIC_SHORT_VIDEOS)
+    meta["static_filter_removed_task_types"] = sorted(SHORT_STATIC_DROP_PART2_TASK_TYPES)
+    meta["static_filter_removed_task_instances"] = removed_task_counts
+    meta["static_filter_pruned_videos"] = pruned_videos
+    return out
 
 
 def flatten_part(data: Dict[str, Any], bench_version: str) -> List[Dict[str, Any]]:
@@ -476,6 +600,8 @@ def patch_part3(data: Dict[str, Any], part3_root: str, cache_dir: Path) -> Dict[
     part3_labels = ["top20merge_full/corrected_json_4"]
     kept_videos = []
     dropped_videos = []
+    pruned_videos = []
+    removed_task_counts: Dict[str, int] = {}
     for video in out.get("videos") or []:
         video_name = video.get("video_name", "")
         loaded = try_load_corrected_json(part3_roots, part3_labels, video_name, part3_cache)
@@ -484,18 +610,34 @@ def patch_part3(data: Dict[str, Any], part3_root: str, cache_dir: Path) -> Dict[
             continue
         raw, resolved_label = loaded
         video["source_folder"] = resolved_label
+        kept_tasks = []
+        removed_here = []
         for task in video.get("tasks") or []:
             task["source_folder"] = resolved_label
-            if task.get("task_type") == "object_counting":
+            task_type = str(task.get("task_type") or "")
+            if video_name in SET_B_STATIC_SHORT_VIDEOS and task_type in SHORT_STATIC_DROP_PART3_TASK_TYPES:
+                removed_here.append(task_type)
+                removed_task_counts[task_type] = removed_task_counts.get(task_type, 0) + 1
+                continue
+            if task_type == "object_counting":
                 patch_counting_task(task, raw)
             else:
                 patch_appearance_task(task, raw, video_name)
-        kept_videos.append(video)
+            kept_tasks.append(task)
+        video["tasks"] = kept_tasks
+        if removed_here:
+            pruned_videos.append({"video_name": video_name, "removed_task_types": removed_here})
+        if kept_tasks:
+            kept_videos.append(video)
     out["videos"] = kept_videos
     meta = out.setdefault("metadata", {})
-    meta["version"] = "2.0"
+    meta["version"] = "2.1"
     meta["source_override"] = "top20merge_full/corrected_json_4"
     meta["dropped_videos_missing_source"] = dropped_videos
+    meta["static_filter_set_b_videos"] = sorted(SET_B_STATIC_SHORT_VIDEOS)
+    meta["static_filter_removed_task_types"] = sorted(SHORT_STATIC_DROP_PART3_TASK_TYPES)
+    meta["static_filter_removed_task_instances"] = removed_task_counts
+    meta["static_filter_pruned_videos"] = pruned_videos
     return out
 
 
@@ -530,6 +672,7 @@ def main() -> None:
 
     new_part1 = patch_part1(part1, args.part1_corrected_root, cache_dir)
     new_part2, merged_videos, merged_tasks = merge_duplicate_videos(part2)
+    new_part2 = patch_part2(new_part2, args.part23_corrected_root, cache_dir)
     new_part3 = patch_part3(part3, args.part23_corrected_root, cache_dir)
 
     dump_json(source_dir / PART1_FILE, new_part1)
