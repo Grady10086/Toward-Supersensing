@@ -135,7 +135,7 @@ def _rebase_or_validate_video_path(video_path: Any, video_root: str | None) -> s
         if video_root:
             for old_prefix in LEGACY_DATA_PREFIXES:
                 if raw.startswith(old_prefix):
-                    candidate = os.path.join(video_root, raw[len(old_prefix) :].lstrip('/'))
+                    candidate = os.path.join(video_root, raw[len(old_prefix) :].lstrip("/"))
                     if os.path.exists(candidate):
                         return candidate
         return raw
@@ -154,8 +154,8 @@ def _resolve_video_path_from_source_folder(video_name: Any, source_folder: Any, 
     if not subdirs:
         return None
     base = str(video_name)
-    if not base.endswith('.mp4'):
-        base = f'{base}.mp4'
+    if not base.endswith(".mp4"):
+        base = f"{base}.mp4"
     candidates = [os.path.join(video_root, subdir, base) for subdir in subdirs]
     for candidate in candidates:
         if os.path.exists(candidate):
@@ -165,30 +165,21 @@ def _resolve_video_path_from_source_folder(video_name: Any, source_folder: Any, 
 
 def resolve_doc_video_path(doc: Dict[str, Any]) -> str:
     video_root = _resolve_video_root()
-    direct_path = _rebase_or_validate_video_path(doc.get('video_path'), video_root)
+    direct_path = _rebase_or_validate_video_path(doc.get("video_path"), video_root)
     if direct_path and os.path.exists(direct_path):
         return direct_path
 
-    fallback = _resolve_video_path_from_source_folder(doc.get('video_name'), doc.get('source_folder'), video_root)
+    fallback = _resolve_video_path_from_source_folder(doc.get("video_name"), doc.get("source_folder"), video_root)
     if fallback and os.path.exists(fallback):
         return fallback
 
-    video_name = doc.get('video_name') or '<missing video_name>'
-    source_folder = doc.get('source_folder') or '<missing source_folder>'
+    video_name = doc.get("video_name") or "<missing video_name>"
+    source_folder = doc.get("source_folder") or "<missing source_folder>"
     if direct_path and not os.path.exists(direct_path):
-        raise FileNotFoundError(
-            f'Cambrian-W video path does not exist: {direct_path}. '
-            f'video_name={video_name} source_folder={source_folder}'
-        )
+        raise FileNotFoundError(f"Cambrian-W video path does not exist: {direct_path}. " f"video_name={video_name} source_folder={source_folder}")
     if fallback and not os.path.exists(fallback):
-        raise FileNotFoundError(
-            f'Cambrian-W could not find video under {CAMBW_VIDEO_ROOT_ENV}={video_root}: {fallback}. '
-            f'video_name={video_name} source_folder={source_folder}'
-        )
-    raise RuntimeError(
-        f'Cambrian-W cannot resolve video for video_name={video_name} source_folder={source_folder}. '
-        f'Set {CAMBW_VIDEO_ROOT_ENV} to the dataset root containing long_video_persp/top20merge_0207_persp.'
-    )
+        raise FileNotFoundError(f"Cambrian-W could not find video under {CAMBW_VIDEO_ROOT_ENV}={video_root}: {fallback}. " f"video_name={video_name} source_folder={source_folder}")
+    raise RuntimeError(f"Cambrian-W cannot resolve video for video_name={video_name} source_folder={source_folder}. " f"Set {CAMBW_VIDEO_ROOT_ENV} to the dataset root containing long_video_persp/top20merge_0207_persp.")
 
 
 @lru_cache(maxsize=256)
