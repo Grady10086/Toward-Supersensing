@@ -12,9 +12,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT_DIR = REPO_ROOT / "lmms_eval" / "tasks" / "cambw" / "data"
 SOURCE_FOLDER_TO_DATA_SUBDIRS = {
     "new_long_video/corrected_json_2": ["long_video_persp", "new_long_video_persp"],
+    "new_long_video/corrected_json_3": ["long_video_persp", "new_long_video_persp"],
     "top20merge/corrected_json": ["top20merge_0207_persp"],
     "long_video/corrected_json_2": ["long_video_persp"],
+    "long_video/corrected_json_3": ["long_video_persp"],
     "top20merge_full/corrected_json_2": ["top20merge_0207_persp"],
+    "top20merge_full/corrected_json_3": ["top20merge_0207_persp"],
+    "top20merge_full/corrected_json_4": ["top20merge_0207_persp"],
 }
 
 

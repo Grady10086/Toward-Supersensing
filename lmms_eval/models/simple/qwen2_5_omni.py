@@ -14,6 +14,7 @@ from lmms_eval import utils
 from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
+from lmms_eval.api.visual_payload import flatten_visual_inputs
 from lmms_eval.models.model_utils.audio_processing import split_audio
 from lmms_eval.models.model_utils.load_video import read_video
 from lmms_eval.models.model_utils.media_encoder import encode_image_to_base64
@@ -21,7 +22,20 @@ from lmms_eval.models.model_utils.media_encoder import encode_image_to_base64
 try:
     from qwen_omni_utils import process_mm_info
 except ImportError:
-    eval_logger.warning("Failed to import qwen_omni_utils; Please install it via `pip install qwen-omni-utils[decord]`")
+    eval_logger.warning("Failed to import qwen_omni_utils; falling back to a local multimodal extractor for image/video-only evaluation.")
+
+    def process_mm_info(messages, use_audio_in_video=False):
+        audios, images, videos = [], [], []
+        for message in messages:
+            for content in message.get("content", []):
+                content_type = content.get("type")
+                if content_type == "audio":
+                    audios.append(content.get("audio"))
+                elif content_type == "image":
+                    images.append(content.get("image"))
+                elif content_type == "video":
+                    videos.append(content.get("video"))
+        return audios or None, images or None, videos or None
 
 
 @register_model("qwen2_5_omni")
@@ -74,7 +88,7 @@ class Qwen2_5_Omni(lmms):
 
         Qwen2_5OmniForConditionalGeneration._tp_plan = [] if Qwen2_5OmniForConditionalGeneration._tp_plan is None else Qwen2_5OmniForConditionalGeneration._tp_plan
         self._model = Qwen2_5OmniForConditionalGeneration.from_pretrained(pretrained, torch_dtype="auto", device_map=self.device_map, attn_implementation=attn_implementation).eval()
-        self.processor = Qwen2_5OmniProcessor.from_pretrained("Qwen/Qwen2.5-Omni-7B")
+        self.processor = Qwen2_5OmniProcessor.from_pretrained(pretrained)
         self.max_num_frames = max_num_frames
         self._tokenizer = self.processor.tokenizer
 
@@ -190,8 +204,7 @@ class Qwen2_5_Omni(lmms):
             contexts, all_gen_kwargs, doc_to_visual, doc_id, task, split = zip(*chunk)
             task = task[0]
             split = split[0]
-            visuals = [doc_to_visual[0](self.task_dict[task][split][ids]) for ids in doc_id]
-            visuals = self.flatten(visuals)
+            visual_lists = [flatten_visual_inputs(doc_to_visual[0](self.task_dict[task][split][ids])) for ids in doc_id]
 
             gen_kwargs = all_gen_kwargs[0]
 
@@ -210,55 +223,41 @@ class Qwen2_5_Omni(lmms):
             # https://github.com/QwenLM/Qwen2.5-Omni/tree/main/cookbooks
             message = [{"role": "system", "content": [{"type": "text", "text": self.system_prompt}]}]
             for i, context in enumerate(contexts):
-                if len(visuals) > 0:
-                    visual = visuals[i] if i < len(visuals) else None
+                visuals = visual_lists[i] if i < len(visual_lists) else []
+                single_message = {"role": "user", "content": []}
+                for visual in visuals:
                     if isinstance(visual, str) and visual.endswith((".mp4", ".avi", ".mov")):  # Video file
                         current_use_audio = self._check_if_video_has_audio(visual)
                         if self.use_custom_video_loader:
                             frames = read_video(visual, num_frm=self.max_num_frames, fps=self.fps)
-                            image_contents = []
                             for frame in frames:
-                                img = Image.fromarray(frame)
-                                b64 = encode_image_to_base64(img, image_format="JPEG", convert_rgb=True, quality=85)
-                                image_contents.append(f"data:image/jpeg;base64,{b64}")
-                            message.append({"role": "user", "content": [{"type": "video", "video": image_contents}, {"type": "text", "text": context}]})
+                                img = Image.fromarray(frame).convert("RGB")
+                                single_message["content"].append({"type": "image", "image": img})
                         else:  # Model video loader
-                            message.append({"role": "user", "content": [{"type": "video", "video": visual}, {"type": "text", "text": context}]})
-
-                    elif isinstance(visual, Image.Image):  # Single image
-                        message.append({"role": "user", "content": [{"type": "image", "image": visual}, {"type": "text", "text": context}]})
-
-                    elif isinstance(visual, (list, tuple)) and all(isinstance(v, Image.Image) for v in visual):  # Multiple images
-                        single_message = {"role": "user", "content": []}
-                        for v in visual:
-                            single_message["content"].append({"type": "image", "image": v})
-                        single_message["content"].append({"type": "text", "text": context})
-                        message.append(single_message)
-
-                    # Fixed code for audio messages
+                            single_message["content"].append({"type": "video", "video": visual})
+                    elif isinstance(visual, Image.Image):
+                        single_message["content"].append({"type": "image", "image": visual.convert("RGB")})
                     elif isinstance(visual, dict):  # Single audio
                         current_use_audio = True
                         audio = self.resample_audio(visual["array"], visual["sampling_rate"])
-                        audio_splits = split_audio(audio, 4800000)  # Split the audio to 5 min chunks
-                        single_message = {"role": "user", "content": []}
-                        for i in range(len(audio_splits)):
-                            single_message["content"].append({"type": "audio", "audio": audio_splits[i]})
-                        single_message["content"].append({"type": "text", "text": context})
-                        message.append(single_message)
-
-                    elif isinstance(visual, (list, tuple)) and all(isinstance(v, dict) for v in visual):  # Multiple audios
+                        audio_splits = split_audio(audio, 4800000)
+                        for audio_chunk in audio_splits:
+                            single_message["content"].append({"type": "audio", "audio": audio_chunk})
+                    elif isinstance(visual, (list, tuple)) and all(isinstance(v, Image.Image) for v in visual):
+                        for image in visual:
+                            single_message["content"].append({"type": "image", "image": image.convert("RGB")})
+                    elif isinstance(visual, (list, tuple)) and all(isinstance(v, dict) for v in visual):
                         current_use_audio = True
-                        for i, v in enumerate(visual):
-                            audio = self.resample_audio(v["array"], v["sampling_rate"])
-                            audio_splits = split_audio(audio, 4800000)  # Split the audio to 5 min chunks
-                            single_message = {"role": "user", "content": []}
-                            for j in range(len(audio_splits)):
-                                single_message["content"].append({"type": "audio", "audio": audio_splits[j]})
-                            single_message["content"].append({"type": "text", "text": context})
-                            message.append(single_message)
-
+                        for audio_item in visual:
+                            audio = self.resample_audio(audio_item["array"], audio_item["sampling_rate"])
+                            audio_splits = split_audio(audio, 4800000)
+                            for audio_chunk in audio_splits:
+                                single_message["content"].append({"type": "audio", "audio": audio_chunk})
                     else:
                         raise ValueError(f"Unknown visual type: {type(visual)}")
+
+                single_message["content"].append({"type": "text", "text": context})
+                message.append(single_message)
 
             text = self.processor.apply_chat_template(message, add_generation_prompt=True, tokenize=False)
             audios, images, videos = process_mm_info(message, use_audio_in_video=current_use_audio)

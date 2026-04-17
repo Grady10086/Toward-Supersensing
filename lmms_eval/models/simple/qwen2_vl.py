@@ -17,6 +17,7 @@ from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
 from lmms_eval.imports import optional_import
 from lmms_eval.models.model_utils.media_encoder import encode_image_to_data_url
+from lmms_eval.api.visual_payload import flatten_visual_inputs
 
 process_vision_info, _has_qwen_vl = optional_import("qwen_vl_utils", "process_vision_info")
 if not _has_qwen_vl:
@@ -41,7 +42,8 @@ class Qwen2_VL(lmms):
         max_length: Optional[int] = 2048,  # Added max_length parameter
         max_pixels: int = 602112,
         min_pixels: int = 3136,
-        max_num_frames: int = 32,
+        max_num_frames: Optional[int] = None,
+        fps: Optional[float] = None,
         system_prompt: Optional[str] = "You are a helpful assistant.",
         interleave_visuals: Optional[bool] = False,
         reasoning_prompt: Optional[str] = None,
@@ -74,6 +76,7 @@ class Qwen2_VL(lmms):
         self.max_pixels = max_pixels
         self.min_pixels = min_pixels
         self.max_num_frames = max_num_frames
+        self.fps = fps
         if reasoning_prompt:
             self.reasoning_prompt = reasoning_prompt.replace("\\n", "\n")
         else:
@@ -179,6 +182,21 @@ class Qwen2_VL(lmms):
             quality=85,
         )
 
+    def _build_video_visual(self, video_path: str) -> dict:
+        visual = {
+            "type": "video",
+            "video": video_path,
+            "max_pixels": self.max_pixels,
+            "min_pixels": self.min_pixels,
+        }
+        if self.fps is not None:
+            visual["fps"] = self.fps
+            if self.max_num_frames is not None:
+                visual["max_frames"] = self.max_num_frames
+        elif self.max_num_frames is not None:
+            visual["nframes"] = self.max_num_frames
+        return visual
+
     def generate_until(self, requests: List[Instance]) -> List[str]:
         res = []
 
@@ -222,7 +240,7 @@ class Qwen2_VL(lmms):
             visuals_per_doc = []
             for fn, ids in zip(doc_to_visual, doc_id):
                 v = fn(self.task_dict[task][split][ids])
-                visuals_per_doc.append(_ensure_list(v))
+                visuals_per_doc.append(flatten_visual_inputs(v))
 
             gen_kwargs = all_gen_kwargs[0] if all_gen_kwargs else {}
 
@@ -270,17 +288,7 @@ class Qwen2_VL(lmms):
                         try:
                             vr = decord.VideoReader(visual)
                             if len(vr) > 0:
-                                first_frame = vr[0].asnumpy()
-                                height, width = first_frame.shape[:2]
-                                # max_pixels = height * width # This seems incorrect, should use instance config
-                                processed_visuals.append(
-                                    {
-                                        "type": "video",
-                                        "video": visual,
-                                        "max_pixels": self.max_pixels,
-                                        "min_pixels": self.min_pixels,
-                                    }
-                                )
+                                processed_visuals.append(self._build_video_visual(visual))
                             else:
                                 eval_logger.warning(f"Skipping empty video: {visual}")
                         except Exception as e:
@@ -351,24 +359,7 @@ class Qwen2_VL(lmms):
                 video_tensor = video_inputs[0]
                 if isinstance(video_tensor, torch.Tensor) and video_tensor.ndim > 0 and video_tensor.shape[0] > 0:
                     total_frames = video_tensor.shape[0]
-                    indices = np.linspace(
-                        0,
-                        total_frames - 1,
-                        self.max_num_frames,
-                        dtype=int,
-                        endpoint=True,
-                    )  # Ensure endpoint=True
-                    # Ensure unique indices if linspace produces duplicates for few frames
-                    indices = np.unique(indices)
-                    # Append the last frame index if not already included and needed
-                    # if total_frames > 0 and total_frames - 1 not in indices:
-                    #     indices = np.append(indices, total_frames - 1)
-                    #     indices = np.unique(indices) # Ensure uniqueness again
-
-                    # Limit to max_num_frames if appending last frame exceeded it
-                    if len(indices) > self.max_num_frames:
-                        # This might happen if linspace already picked close indices including the end
-                        # Or if max_num_frames is very small. Prioritize evenly spaced.
+                    if self.max_num_frames is not None and total_frames > self.max_num_frames:
                         indices = np.linspace(
                             0,
                             total_frames - 1,
@@ -377,8 +368,16 @@ class Qwen2_VL(lmms):
                             endpoint=True,
                         )
                         indices = np.unique(indices)
-
-                    video_inputs[0] = video_tensor[indices]
+                        if len(indices) > self.max_num_frames:
+                            indices = np.linspace(
+                                0,
+                                total_frames - 1,
+                                self.max_num_frames,
+                                dtype=int,
+                                endpoint=True,
+                            )
+                            indices = np.unique(indices)
+                        video_inputs[0] = video_tensor[indices]
                 else:
                     eval_logger.warning(f"Unexpected video_inputs format or empty tensor: {type(video_tensor)}")
 
@@ -493,7 +492,7 @@ class Qwen2_VL(lmms):
             task = batched_task[0]
             split = batched_split[0]
 
-            batched_visuals = [batched_doc_to_visual[0](self.task_dict[task][split][ids]) for ids in batched_doc_id]
+            batched_visuals = [flatten_visual_inputs(batched_doc_to_visual[0](self.task_dict[task][split][ids])) for ids in batched_doc_id]
             if None in batched_visuals:
                 batched_visuals = [None] * len(batched_visuals)
             else:
@@ -635,14 +634,7 @@ class Qwen2_VL(lmms):
                     video_tensor = video_inputs[0]
                     if isinstance(video_tensor, torch.Tensor) and video_tensor.ndim > 0 and video_tensor.shape[0] > 0:
                         total_frames = video_tensor.shape[0]
-                        indices = np.linspace(
-                            0,
-                            total_frames - 1,
-                            self.max_num_frames,
-                            dtype=int,
-                            endpoint=True,
-                        )
-                        if len(indices) > self.max_num_frames:
+                        if self.max_num_frames is not None and total_frames > self.max_num_frames:
                             indices = np.linspace(
                                 0,
                                 total_frames - 1,
@@ -650,9 +642,17 @@ class Qwen2_VL(lmms):
                                 dtype=int,
                                 endpoint=True,
                             )
-                            indices = np.unique(indices)
+                            if len(indices) > self.max_num_frames:
+                                indices = np.linspace(
+                                    0,
+                                    total_frames - 1,
+                                    self.max_num_frames,
+                                    dtype=int,
+                                    endpoint=True,
+                                )
+                                indices = np.unique(indices)
 
-                        video_inputs[0] = video_tensor[indices]
+                            video_inputs[0] = video_tensor[indices]
                     else:
                         eval_logger.warning(f"Unexpected video_inputs format or empty tensor: {type(video_tensor)}")
 

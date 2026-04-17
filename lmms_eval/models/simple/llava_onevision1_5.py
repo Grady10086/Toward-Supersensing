@@ -15,6 +15,7 @@ from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
 from lmms_eval.imports import optional_import
+from lmms_eval.api.visual_payload import flatten_visual_inputs
 
 process_vision_info, _has_qwen_vl = optional_import("qwen_vl_utils", "process_vision_info")
 if not _has_qwen_vl:
@@ -39,6 +40,7 @@ class Llava_OneVision1_5(lmms):
         min_pixels: int = 256 * 28 * 28,
         max_pixels: int = 1605632,
         max_num_frames: int = 32,
+        fps: Optional[float] = None,
         system_prompt: Optional[str] = "You are a helpful assistant.",
         interleave_visuals: Optional[bool] = False,
         image_first: Optional[bool] = True,
@@ -89,6 +91,7 @@ class Llava_OneVision1_5(lmms):
         self.max_pixels = max_pixels
         self.min_pixels = min_pixels
         self.max_num_frames = max_num_frames
+        self.fps = fps
         self.image_first = image_first
         if reasoning_prompt:
             self.reasoning_prompt = reasoning_prompt.replace("\\n", "\n")
@@ -201,7 +204,7 @@ class Llava_OneVision1_5(lmms):
             contexts, all_gen_kwargs, doc_to_visual, doc_id, task, split = zip(*chunk)
             task = task[0]
             split = split[0]
-            visual_list = [doc_to_visual[0](self.task_dict[task][split][ids]) for ids in doc_id]
+            visual_list = [flatten_visual_inputs(doc_to_visual[0](self.task_dict[task][split][ids])) for ids in doc_id]
             gen_kwargs = all_gen_kwargs[0]
 
             # Set default until or update values from gen_kwargs if present
@@ -239,14 +242,17 @@ class Llava_OneVision1_5(lmms):
                         first_frame = vr[0].asnumpy()
                         height, width = first_frame.shape[:2]
                         # max_pixels = height * width
-                        processed_visuals.append(
-                            {
-                                "type": "video",
-                                "video": visual,
-                                "max_pixels": self.max_pixels,
-                                "min_pixels": self.min_pixels,
-                            }
-                        )
+                        video_payload = {
+                            "type": "video",
+                            "video": visual,
+                            "max_pixels": self.max_pixels,
+                            "min_pixels": self.min_pixels,
+                        }
+                        if self.fps is not None:
+                            video_payload["fps"] = self.fps
+                            if self.max_num_frames is not None:
+                                video_payload["max_frames"] = self.max_num_frames
+                        processed_visuals.append(video_payload)
                     elif isinstance(visual, Image.Image):
                         processed_visuals.append({"type": "image", "image": visual.convert("RGB")})
 
@@ -310,6 +316,10 @@ class Llava_OneVision1_5(lmms):
                 inputs = inputs.to("cuda")
             else:
                 inputs = inputs.to(self.device)
+
+            # Current compatible LLaVA-OneVision checkpoints can return processor-side video metadata
+            # that generate() does not consume.
+            inputs.pop("second_per_grid_ts", None)
 
             # Set default generation kwargs
             default_gen_kwargs = {

@@ -22,6 +22,7 @@ from lmms_eval.api.instance import Instance
 from lmms_eval.api.model import lmms
 from lmms_eval.api.registry import register_model
 from lmms_eval.imports import optional_import
+from lmms_eval.api.visual_payload import flatten_visual_inputs
 
 process_vision_info, _has_qwen_vl = optional_import("qwen_vl_utils", "process_vision_info")
 if not _has_qwen_vl:
@@ -68,7 +69,7 @@ class Qwen3_VL(lmms):
             self.device_map = f"cuda:{accelerator.local_process_index}"
         else:
             self._device = torch.device(device)
-            self.device_map = device_map if device_map else device
+            self.device_map = device if device_map in (None, '', 'auto') else device_map
 
         # Prepare model loading arguments
         model_kwargs = {
@@ -252,7 +253,7 @@ class Qwen3_VL(lmms):
         chunks = re_ords.get_batched(n=self.batch_size, batch_fn=None)
         for chunk in chunks:
             contexts, all_gen_kwargs, doc_to_visual, doc_id, task, split = zip(*chunk)
-            visual_list = [doc_to_visual[0](self.task_dict[t][s][i]) for t, s, i in zip(task, split, doc_id)]
+            visual_list = [flatten_visual_inputs(doc_to_visual[0](self.task_dict[t][s][i])) for t, s, i in zip(task, split, doc_id)]
             gen_kwargs = all_gen_kwargs[0]
 
             # Set default until or update values from gen_kwargs if present
@@ -368,10 +369,7 @@ class Qwen3_VL(lmms):
                     do_resize=False,
                     return_tensors="pt",
                 )
-            if self.device_map == "auto":
-                inputs = inputs.to("cuda")
-            else:
-                inputs = inputs.to(self.device)
+            inputs = inputs.to(self.device)
 
             # Set default generation kwargs
             default_gen_kwargs = {

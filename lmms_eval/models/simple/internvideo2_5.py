@@ -339,5 +339,8 @@ class InternVideo2_5(lmms):
         pbar.close()
         return res
 
+    def generate_until_multi_round(self, requests):
+        raise NotImplementedError("InternVideo2_5 does not implement multi-round generation")
+
     def loglikelihood(self, requests: List[Instance]) -> List[Tuple[float, bool]]:
         assert False, "Not implemented yet."

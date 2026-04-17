@@ -114,10 +114,7 @@ class Qwen3_VL(Qwen3_VLSimple):
                     return_tensors="pt",
                 )
 
-            if self.device_map == "auto":
-                inputs = inputs.to("cuda")
-            else:
-                inputs = inputs.to(self.device)
+            inputs = inputs.to(self.device)
 
             # Set default generation kwargs
             default_gen_kwargs = {
